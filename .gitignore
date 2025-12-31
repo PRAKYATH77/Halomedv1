@@ -1,0 +1,16 @@
+# Global ignore rules for the project root
+# Keep only main README, ignore other markdown docs
+*.md
+!README.md
+
+# Common OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / build / venv
+node_modules/
+dist/
+.vite/
+.venv/

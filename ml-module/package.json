@@ -1,0 +1,10 @@
+{
+  "name": "halomed-ml",
+  "version": "1.0.0",
+  "description": "HALOmed ML Module - Disease Prediction",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python -m flask --app app run --debug"
+  }
+}

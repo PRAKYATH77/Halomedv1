@@ -1,0 +1,35 @@
+﻿Γ£à Database connected successfully
+node : node:events:496
+At line:1 char:1
++ node src/server.js 2>&1 | Out-File -FilePath server-log.txt 
+-Encoding ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (node:events:496:Stri 
+   ng) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::5000
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\praky\OneDrive\Desktop\newHalomed
+\backend\node_modules\express\lib\application.js:635:24)
+    at startServer (file:///C:/Users/praky/OneDrive/Desktop/newHal
+omed/backend/src/server.js:79:9)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:105:5)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 5000
+}
+
+Node.js v22.16.0
