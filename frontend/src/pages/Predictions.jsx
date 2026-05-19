@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { predictionsAPI } from '../services/api';
-import { AlertTriangle, Brain } from 'lucide-react';
+import { Brain } from 'lucide-react';
 
 function Predictions() {
   const [predictions, setPredictions] = useState([]);

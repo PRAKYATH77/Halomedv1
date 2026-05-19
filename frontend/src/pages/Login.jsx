@@ -2,7 +2,47 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ShieldCheck, Users, UserCircle } from 'lucide-react';
+
+const DEMO_ACCOUNTS = [
+  {
+    label: 'Admin',
+    username: 'admin',
+    password: 'admin123',
+    icon: ShieldCheck,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
+    desc: 'Full system access',
+  },
+  {
+    label: 'Staff',
+    username: 'staff',
+    password: 'staff123',
+    icon: Users,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
+    desc: 'Sales, inventory, orders',
+  },
+  {
+    label: 'Delivery Store',
+    username: 'delivery_store',
+    password: 'delivery123',
+    icon: Truck,
+    color: 'text-orange-600',
+    bg: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
+    desc: 'Approve and deliver orders',
+  },
+  {
+    label: 'Customer',
+    username: 'customer',
+    password: 'customer123',
+    icon: UserCircle,
+    color: 'text-green-600',
+    bg: 'bg-green-50 hover:bg-green-100 border-green-200',
+    desc: 'Shop, cart & orders',
+  },
+];
+import { Truck } from 'lucide-react';
 
 function Login() {
   const navigate = useNavigate();
@@ -20,6 +60,11 @@ function Login() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const fillDemo = (account) => {
+    setCredentials({ username: account.username, password: account.password });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -98,16 +143,36 @@ function Login() {
         </form>
 
         <p className="mt-6 text-center text-gray-600">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <a href="/register" className="text-primary font-semibold hover:underline">
             Sign Up
           </a>
         </p>
 
+        {/* Demo Credentials Panel */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">Demo Credentials:</p>
-          <p className="text-xs text-gray-600 text-center">Username: admin</p>
-          <p className="text-xs text-gray-600 text-center">Password: admin123</p>
+          <p className="text-xs font-semibold text-gray-500 text-center mb-3 uppercase tracking-wide">
+            Quick Login — Demo Accounts
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {DEMO_ACCOUNTS.map((account) => {
+              const Icon = account.icon;
+              return (
+                <button
+                  key={account.label}
+                  type="button"
+                  onClick={() => fillDemo(account)}
+                  className={`flex flex-col items-center gap-1 px-2 py-3 rounded-lg border cursor-pointer transition text-center ${account.bg}`}
+                  title={`Fill ${account.label} credentials`}
+                >
+                  <Icon size={20} className={account.color} />
+                  <span className={`text-xs font-semibold ${account.color}`}>{account.label}</span>
+                  <span className="text-xs text-gray-500">{account.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-2">Click a role card to auto-fill credentials</p>
         </div>
       </div>
     </div>

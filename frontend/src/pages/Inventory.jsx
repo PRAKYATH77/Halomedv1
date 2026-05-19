@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { inventoryAPI, medicinesAPI } from '../services/api';
-import { AlertCircle, TrendingDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { TrendingDown } from 'lucide-react';
 
 function Inventory() {
   const [summary, setSummary] = useState(null);
@@ -10,6 +11,35 @@ function Inventory() {
   useEffect(() => {
     fetchInventoryData();
   }, []);
+
+  const { user } = useAuth();
+  const canEdit = ['admin', 'staff'].includes(user?.role);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ medicine_id: '', change_type: 'addition', quantity_changed: 0, notes: '' });
+
+  const handleInput = (e) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+  };
+
+  const submitLog = async (e) => {
+    e.preventDefault();
+    try {
+      await inventoryAPI.addLog({
+        medicine_id: parseInt(form.medicine_id, 10),
+        change_type: form.change_type,
+        quantity_changed: parseInt(form.quantity_changed, 10),
+        notes: form.notes,
+      });
+      setShowAdd(false);
+      setForm({ medicine_id: '', change_type: 'addition', quantity_changed: 0, notes: '' });
+      fetchInventoryData();
+      alert('Inventory log added');
+    } catch (err) {
+      console.error('Failed to add inventory log:', err);
+      alert('Failed to add log');
+    }
+  };
 
   const fetchInventoryData = async () => {
     try {
@@ -32,6 +62,36 @@ function Inventory() {
 
   return (
     <div>
+      {canEdit && (
+        <div className="mb-6 flex justify-end">
+          <button onClick={() => setShowAdd(!showAdd)} className="btn-primary">
+            {showAdd ? 'Close' : 'Add Inventory Log'}
+          </button>
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="card mb-6">
+          <h2 className="text-xl font-semibold mb-4">Add Inventory Log</h2>
+          <form onSubmit={submitLog} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input name="medicine_id" value={form.medicine_id} onChange={handleInput} placeholder="Medicine ID" className="input-field" required />
+              <select name="change_type" value={form.change_type} onChange={handleInput} className="input-field">
+                <option value="addition">Addition</option>
+                <option value="sale">Sale</option>
+                <option value="adjustment">Adjustment</option>
+              </select>
+              <input name="quantity_changed" value={form.quantity_changed} onChange={handleInput} type="number" className="input-field" required />
+            </div>
+            <div>
+              <input name="notes" value={form.notes} onChange={handleInput} placeholder="Notes (optional)" className="input-field" />
+            </div>
+            <div>
+              <button type="submit" className="btn-primary">Save Log</button>
+            </div>
+          </form>
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Inventory Management</h1>
 
       {/* Summary Cards */}

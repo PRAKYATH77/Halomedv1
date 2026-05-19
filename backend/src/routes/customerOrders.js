@@ -3,6 +3,15 @@ import { sendResponse, handleError } from '../utils/helpers.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
+const ORDER_STATUSES = ['pending', 'confirmed', 'assigned', 'out_for_delivery', 'received', 'cancelled'];
+
+const normalizeStatus = (status) => (typeof status === 'string' ? status.trim().toLowerCase() : '');
+
+const orderSelectQuery = `
+  SELECT co.*, u.username AS delivery_store_name
+  FROM customer_orders co
+  LEFT JOIN users u ON co.assigned_delivery_store_id = u.user_id
+`;
 
 // Create customer order
 router.post('/', authenticateToken, async (req, res) => {
@@ -33,8 +42,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Create order with appropriate initial status
     const [result] = await connection.query(
-      `INSERT INTO customer_orders (customer_id, total_amount, delivery_address, city, zip_code, phone_number, payment_method, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO customer_orders (
+         customer_id, total_amount, delivery_address, city, zip_code, phone_number, payment_method, status,
+         assigned_delivery_store_id, assigned_by, assigned_at, approved_for_delivery_at, received_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)`,
       [customerId, totalAmount, deliveryAddress, city, zipCode, phoneNumber, paymentMethod, initialStatus]
     );
 
@@ -107,12 +118,15 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    let query = `SELECT * FROM customer_orders WHERE 1=1`;
+    let query = `${orderSelectQuery} WHERE 1=1`;
     const params = [];
 
     // If customer, only show their orders
     if (req.user.role === 'customer') {
       query += ` AND customer_id = ?`;
+      params.push(req.user.userId);
+    } else if (req.user.role === 'delivery_store') {
+      query += ` AND assigned_delivery_store_id = ?`;
       params.push(req.user.userId);
     }
 
@@ -147,7 +161,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     const [orders] = await pool.query(
-      `SELECT * FROM customer_orders WHERE order_id = ?`,
+      `${orderSelectQuery} WHERE co.order_id = ?`,
       [id]
     );
 
@@ -157,6 +171,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     // Check permission
     if (req.user.role === 'customer' && orders[0].customer_id !== req.user.userId) {
+      return sendResponse(res, 403, false, 'Unauthorized');
+    }
+
+    if (req.user.role === 'delivery_store' && orders[0].assigned_delivery_store_id !== req.user.userId) {
       return sendResponse(res, 403, false, 'Unauthorized');
     }
 
@@ -177,20 +195,80 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Update order status (admin/staff only)
-router.patch('/:id/status', authenticateToken, authorizeRole(['admin', 'staff']), async (req, res) => {
+// Update order status
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { id } = req.params;
-    const { status } = req.body;
+    const status = normalizeStatus(req.body.status);
 
-    const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
+    if (!ORDER_STATUSES.includes(status)) {
       return sendResponse(res, 400, false, 'Invalid status');
     }
 
+    const [orders] = await pool.query(
+      'SELECT order_id, customer_id, assigned_delivery_store_id, status FROM customer_orders WHERE order_id = ?',
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return sendResponse(res, 404, false, 'Order not found');
+    }
+
+    const order = orders[0];
+
+    if (req.user.role === 'customer') {
+      if (order.customer_id !== req.user.userId) {
+        return sendResponse(res, 403, false, 'Unauthorized');
+      }
+
+      if (status !== 'received') {
+        return sendResponse(res, 403, false, 'Customers can only confirm receipt');
+      }
+
+      if (!['out_for_delivery', 'received'].includes(order.status)) {
+        return sendResponse(res, 400, false, 'Order is not ready for receipt');
+      }
+
+      await pool.query(
+        `UPDATE customer_orders SET status = 'received', received_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?`,
+        [id]
+      );
+
+      return sendResponse(res, 200, true, 'Order marked as received');
+    }
+
+    if (req.user.role === 'delivery_store') {
+      if (Number(order.assigned_delivery_store_id) !== Number(req.user.userId)) {
+        return sendResponse(res, 403, false, 'This order is not assigned to you');
+      }
+
+      if (status !== 'out_for_delivery') {
+        return sendResponse(res, 403, false, 'Delivery stores can only approve orders for delivery');
+      }
+
+      if (order.status !== 'assigned') {
+        return sendResponse(res, 400, false, 'Order must be assigned before approval');
+      }
+
+      await pool.query(
+        `UPDATE customer_orders SET status = 'out_for_delivery', approved_for_delivery_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?`,
+        [id]
+      );
+
+      return sendResponse(res, 200, true, 'Order approved for delivery');
+    }
+
+    if (!['admin', 'staff'].includes(req.user.role)) {
+      return sendResponse(res, 403, false, 'Unauthorized');
+    }
+
+    if (status === 'received') {
+      return sendResponse(res, 403, false, 'Only customers can confirm receipt');
+    }
+
     const [result] = await pool.query(
-      `UPDATE customer_orders SET status = ? WHERE order_id = ?`,
+      `UPDATE customer_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?`,
       [status, id]
     );
 
@@ -199,6 +277,95 @@ router.patch('/:id/status', authenticateToken, authorizeRole(['admin', 'staff'])
     }
 
     sendResponse(res, 200, true, 'Order status updated successfully');
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Assign order to a delivery store
+router.patch('/:id/assign-delivery-store', authenticateToken, authorizeRole(['admin', 'staff']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+    const { deliveryStoreId } = req.body;
+
+    if (!deliveryStoreId) {
+      return sendResponse(res, 400, false, 'Delivery store is required');
+    }
+
+    const [stores] = await pool.query(
+      "SELECT user_id FROM users WHERE user_id = ? AND role = 'delivery_store' AND is_active = TRUE",
+      [deliveryStoreId]
+    );
+
+    if (stores.length === 0) {
+      return sendResponse(res, 400, false, 'Invalid delivery store');
+    }
+
+    const [orders] = await pool.query(
+      'SELECT order_id, status FROM customer_orders WHERE order_id = ?',
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return sendResponse(res, 404, false, 'Order not found');
+    }
+
+    if (!['confirmed', 'assigned'].includes(orders[0].status)) {
+      return sendResponse(res, 400, false, 'Order must be confirmed before assignment');
+    }
+
+    await pool.query(
+      `UPDATE customer_orders
+       SET assigned_delivery_store_id = ?,
+           assigned_by = ?,
+           assigned_at = CURRENT_TIMESTAMP,
+           status = 'assigned',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = ?`,
+      [deliveryStoreId, req.user.userId, id]
+    );
+
+    sendResponse(res, 200, true, 'Order assigned to delivery store successfully');
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Delivery store approves the order for delivery
+router.patch('/:id/delivery/approve', authenticateToken, authorizeRole(['delivery_store']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+
+    const [orders] = await pool.query(
+      'SELECT order_id, status, assigned_delivery_store_id FROM customer_orders WHERE order_id = ?',
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return sendResponse(res, 404, false, 'Order not found');
+    }
+
+    const order = orders[0];
+    if (Number(order.assigned_delivery_store_id) !== Number(req.user.userId)) {
+      return sendResponse(res, 403, false, 'This order is not assigned to you');
+    }
+
+    if (order.status !== 'assigned') {
+      return sendResponse(res, 400, false, 'Order must be assigned before approval');
+    }
+
+    await pool.query(
+      `UPDATE customer_orders
+       SET status = 'out_for_delivery',
+           approved_for_delivery_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = ?`,
+      [id]
+    );
+
+    sendResponse(res, 200, true, 'Order approved for delivery');
   } catch (error) {
     handleError(error, res);
   }
@@ -277,7 +444,7 @@ router.post('/:id/pay', authenticateToken, async (req, res) => {
 
     // Update order status to confirmed (payment successful)
     await connection.query(
-      `UPDATE customer_orders SET status = 'confirmed' WHERE order_id = ?`,
+      `UPDATE customer_orders SET status = 'confirmed', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?`,
       [id]
     );
 

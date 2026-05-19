@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_BASE_URL = 'http://localhost:5003';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -78,12 +78,35 @@ export const suppliersAPI = {
   update: (id, data) => api.put(`/suppliers/${id}`, data),
 };
 
+// Users with roles (admin endpoints)
+export const usersAPI = {
+  getAll: () => api.get('/auth/users'),
+  getSuppliers: () => api.get('/auth/suppliers'),
+  updateRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
+};
+
+// Delivery stores
+export const deliveryStoresAPI = {
+  getAll: () => api.get('/auth/delivery-stores'),
+};
+
 // Orders API
 export const ordersAPI = {
   create: (data) => api.post('/orders', data),
   getAll: (params) => api.get('/orders', { params }),
   getById: (id) => api.get(`/orders/${id}`),
   updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
+};
+
+// Customer orders (mounted at /api/orders on backend)
+export const customerOrdersAPI = {
+  create: (data) => api.post('/api/orders', data),
+  getAll: (params) => api.get('/api/orders', { params }),
+  getById: (id) => api.get(`/api/orders/${id}`),
+  pay: (id, data) => api.post(`/api/orders/${id}/pay`, data),
+  assignDeliveryStore: (id, deliveryStoreId) => api.patch(`/api/orders/${id}/assign-delivery-store`, { deliveryStoreId }),
+  approveForDelivery: (id) => api.patch(`/api/orders/${id}/delivery/approve`),
+  paymentsList: (params) => api.get('/api/orders/payments/list', { params }),
 };
 
 // Analytics API
@@ -100,6 +123,25 @@ export const predictionsAPI = {
   getRecommendations: (predictionId) => api.get(`/predictions/recommendations/${predictionId}`),
   trigger: () => api.post('/predictions/trigger'),
   create: (data) => api.post('/predictions', data),
+};
+
+// Restock Requests API
+export const restockRequestsAPI = {
+  create: (data) => api.post('/restock', data),
+  getAll: () => api.get('/restock'),
+  getMine: () => api.get('/restock/my'),
+  approve: (id) => api.patch(`/restock/${id}/approve`),
+  reject: (id) => api.patch(`/restock/${id}/reject`),
+  assignSupplier: (id, supplier_id) => api.patch(`/restock/${id}/assign-supplier`, { supplier_id }),
+  supplierOutForDelivery: (id) => api.patch(`/restock/${id}/supplier/out-for-delivery`),
+  supplierMarkDelivered: (id) => api.patch(`/restock/${id}/supplier/mark-delivered`),
+  deliveryStoreConfirm: (id) => api.patch(`/restock/${id}/delivery-store/confirm`),
+};
+
+// Users API (admin)
+export const usersAPI = {
+  getAll: () => api.get('/auth/users'),
+  updateRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
 };
 
 export default api;

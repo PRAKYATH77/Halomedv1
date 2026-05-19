@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, Package, ShoppingCart, Users, AlertCircle, Activity, Filter } from 'lucide-react';
+import { TrendingUp, Package, ShoppingCart, Users, AlertCircle, Activity, Filter, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { analyticsAPI, medicinesAPI } from '../services/api';
+import { analyticsAPI, medicinesAPI, customerOrdersAPI } from '../services/api';
 
 function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
-  const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCondition, setSelectedCondition] = useState('all');
 
@@ -148,6 +147,109 @@ function Dashboard() {
     );
   }
 
+  // Delivery store dashboard - assigned delivery workflow
+  if (user?.role === 'delivery_store') {
+    const [deliveryOrders, setDeliveryOrders] = useState([]);
+    const [deliveryLoading, setDeliveryLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchDeliveryOrders = async () => {
+        try {
+          setDeliveryLoading(true);
+          const response = await customerOrdersAPI.getAll();
+          setDeliveryOrders(response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch delivery orders:', error);
+        } finally {
+          setDeliveryLoading(false);
+        }
+      };
+
+      fetchDeliveryOrders();
+    }, []);
+
+    const assignedCount = deliveryOrders.filter((order) => order.status === 'assigned').length;
+    const outForDeliveryCount = deliveryOrders.filter((order) => order.status === 'out_for_delivery').length;
+    const receivedCount = deliveryOrders.filter((order) => order.status === 'received').length;
+    const recentOrders = [...deliveryOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
+
+    const statusBadge = (status) => {
+      if (status === 'assigned') return 'bg-indigo-100 text-indigo-800';
+      if (status === 'out_for_delivery') return 'bg-blue-100 text-blue-800';
+      if (status === 'received') return 'bg-green-100 text-green-800';
+      return 'bg-gray-100 text-gray-800';
+    };
+
+    if (deliveryLoading) {
+      return <div className="text-center py-12">Loading delivery dashboard...</div>;
+    }
+
+    return (
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Delivery Dashboard</h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="card">
+            <p className="text-gray-600 text-sm mb-2">Assigned Orders</p>
+            <p className="text-3xl font-bold text-indigo-600">{assignedCount}</p>
+          </div>
+          <div className="card">
+            <p className="text-gray-600 text-sm mb-2">Out For Delivery</p>
+            <p className="text-3xl font-bold text-blue-600">{outForDeliveryCount}</p>
+          </div>
+          <div className="card">
+            <p className="text-gray-600 text-sm mb-2">Delivered To Customer</p>
+            <p className="text-3xl font-bold text-green-600">{receivedCount}</p>
+          </div>
+        </div>
+
+        <div className="card mb-8">
+          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a
+              href="/orders"
+              className="p-4 bg-gradient-to-br from-indigo-50 to-blue-100 rounded-lg hover:shadow-md transition-shadow"
+            >
+              <p className="font-semibold text-gray-800">Open Delivery Tasks</p>
+              <p className="text-sm text-gray-600">Approve assigned orders and track active deliveries.</p>
+            </a>
+            <a
+              href="/profile"
+              className="p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg hover:shadow-md transition-shadow"
+            >
+              <p className="font-semibold text-gray-800">My Profile</p>
+              <p className="text-sm text-gray-600">Review your role and account details.</p>
+            </a>
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 className="text-xl font-semibold mb-4">Recent Delivery Orders</h2>
+          {recentOrders.length === 0 ? (
+            <p className="text-gray-600">No assigned orders yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.map((order) => (
+                <div key={order.order_id} className="border rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-gray-800">Order #{order.order_id}</p>
+                    <p className="text-sm text-gray-600">{order.delivery_address}, {order.city}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusBadge(order.status)}`}>
+                      {order.status}
+                    </span>
+                    <span className="text-sm text-gray-600">₹{Number(order.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Admin/Staff dashboard - Analytics view
   useEffect(() => {
     const fetchStats = async () => {
@@ -203,7 +305,7 @@ function Dashboard() {
         <StatCard
           icon={TrendingUp}
           title="Total Revenue"
-          value={`₹${(stats?.total_revenue || 0).toLocaleString()}`}
+          value={`₹${parseFloat(stats?.total_revenue || 0).toLocaleString()}`}
           color="bg-purple-500"
         />
         <StatCard
@@ -221,8 +323,38 @@ function Dashboard() {
         <StatCard
           icon={AlertCircle}
           title="Stock Value"
-          value={`₹${(stats?.total_stock_value || 0).toLocaleString()}`}
+          value={`₹${parseFloat(stats?.total_stock_value || 0).toLocaleString()}`}
           color="bg-yellow-500"
+        />
+        <StatCard
+          icon={ShoppingCart}
+          title="Total Orders"
+          value={stats?.total_orders}
+          color="bg-indigo-500"
+        />
+        <StatCard
+          icon={Activity}
+          title="Assigned Orders"
+          value={stats?.assigned_orders}
+          color="bg-teal-500"
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="Out For Delivery"
+          value={stats?.out_for_delivery_orders}
+          color="bg-orange-500"
+        />
+        <StatCard
+          icon={CheckCircle}
+          title="Received Orders"
+          value={stats?.received_orders}
+          color="bg-emerald-500"
+        />
+        <StatCard
+          icon={Users}
+          title="Delivery Stores"
+          value={stats?.delivery_stores}
+          color="bg-slate-500"
         />
       </div>
 

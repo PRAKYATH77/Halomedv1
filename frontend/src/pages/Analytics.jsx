@@ -70,7 +70,7 @@ function Analytics() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg text-green-600">{medicine.total_sold} sold</p>
-                    <p className="text-sm text-gray-600">₹{(medicine.total_revenue || 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-600">₹{parseFloat(medicine.total_revenue || 0).toLocaleString()}</p>
                   </div>
                 </div>
               ))}

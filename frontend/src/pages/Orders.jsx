@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Clock, CheckCircle, Truck, Edit2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL, customerOrdersAPI, deliveryStoresAPI } from '../services/api';
 
 export default function Orders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [deliveryStores, setDeliveryStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingStatus, setEditingStatus] = useState('');
+  const [assignmentDrafts, setAssignmentDrafts] = useState({});
+  const isCustomer = user?.role === 'customer';
+  const isDeliveryStore = user?.role === 'delivery_store';
+  const canManageOrders = ['admin', 'staff'].includes(user?.role);
+  const canAssignOrders = ['admin', 'staff'].includes(user?.role);
 
   useEffect(() => {
     fetchOrders();
+    if (canAssignOrders) {
+      fetchDeliveryStores();
+    }
   }, []);
+
+  const fetchDeliveryStores = async () => {
+    try {
+      const response = await deliveryStoresAPI.getAll();
+      setDeliveryStores(response.data || []);
+    } catch (error) {
+      console.error('Error fetching delivery stores:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -26,7 +45,7 @@ export default function Orders() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -40,6 +59,15 @@ export default function Orders() {
 
       const data = await response.json();
       setOrders(data.data || data);
+      setAssignmentDrafts((prev) => {
+        const next = { ...prev };
+        (data.data || data).forEach((order) => {
+          if (order.assigned_delivery_store_id && !next[order.order_id]) {
+            next[order.order_id] = String(order.assigned_delivery_store_id);
+          }
+        });
+        return next;
+      });
       setError('');
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -51,7 +79,7 @@ export default function Orders() {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -77,6 +105,33 @@ export default function Orders() {
       alert('Failed to update order status');
     }
   };
+
+  const handleAssignDeliveryStore = async (orderId) => {
+    const deliveryStoreId = assignmentDrafts[orderId];
+
+    if (!deliveryStoreId) {
+      alert('Choose a delivery store first');
+      return;
+    }
+
+    try {
+      await customerOrdersAPI.assignDeliveryStore(orderId, parseInt(deliveryStoreId, 10));
+      await fetchOrders();
+    } catch (error) {
+      console.error('Error assigning delivery store:', error);
+      alert('Failed to assign delivery store');
+    }
+  };
+
+  const handleApproveDelivery = async (orderId) => {
+    try {
+      await customerOrdersAPI.approveForDelivery(orderId);
+      await fetchOrders();
+    } catch (error) {
+      console.error('Error approving delivery:', error);
+      alert('Failed to approve delivery');
+    }
+  };
   const handleSimulatedPayment = async (order) => {
     try {
       // Simple demo OTP flow for online payments
@@ -95,7 +150,7 @@ export default function Orders() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/orders/${order.order_id}/pay`, {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${order.order_id}/pay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,9 +177,11 @@ export default function Orders() {
         return <Clock size={24} className="text-yellow-600" />;
       case 'confirmed':
         return <CheckCircle size={24} className="text-green-600" />;
-      case 'shipped':
+      case 'assigned':
+        return <Truck size={24} className="text-indigo-600" />;
+      case 'out_for_delivery':
         return <Truck size={24} className="text-blue-600" />;
-      case 'delivered':
+      case 'received':
         return <CheckCircle size={24} className="text-green-600" />;
       default:
         return <Package size={24} className="text-gray-600" />;
@@ -137,13 +194,66 @@ export default function Orders() {
         return 'bg-yellow-50 border-yellow-200';
       case 'confirmed':
         return 'bg-green-50 border-green-200';
-      case 'shipped':
+      case 'assigned':
+        return 'bg-indigo-50 border-indigo-200';
+      case 'out_for_delivery':
         return 'bg-blue-50 border-blue-200';
-      case 'delivered':
+      case 'received':
         return 'bg-green-50 border-green-200';
       default:
         return 'bg-gray-50 border-gray-200';
     }
+  };
+
+  const getPageTitle = () => {
+    if (isCustomer) return 'My Orders';
+    if (isDeliveryStore) return 'Delivery Tasks';
+    return 'Customer Orders';
+  };
+
+  const getStatusLabel = () => {
+    if (isCustomer) return 'Status';
+    return 'Delivery Status';
+  };
+
+  const timelineSteps = ['pending', 'confirmed', 'assigned', 'out_for_delivery', 'received'];
+
+  const getStepLabel = (status) => {
+    const labels = {
+      pending: 'Pending',
+      confirmed: 'Confirmed',
+      assigned: 'Assigned',
+      out_for_delivery: 'Out for Delivery',
+      received: 'Received',
+    };
+
+    return labels[status] || status;
+  };
+
+  const getStepState = (orderStatus, stepStatus) => {
+    if (orderStatus === 'cancelled') {
+      return 'cancelled';
+    }
+
+    const orderIndex = timelineSteps.indexOf(orderStatus);
+    const stepIndex = timelineSteps.indexOf(stepStatus);
+
+    if (stepIndex < orderIndex) return 'done';
+    if (stepIndex === orderIndex) return 'current';
+    return 'upcoming';
+  };
+
+  const getStepClass = (state) => {
+    if (state === 'done') return 'bg-green-600 border-green-600 text-white';
+    if (state === 'current') return 'bg-blue-600 border-blue-600 text-white';
+    if (state === 'cancelled') return 'bg-red-100 border-red-200 text-red-500';
+    return 'bg-white border-gray-300 text-gray-500';
+  };
+
+  const getConnectorClass = (state) => {
+    if (state === 'done') return 'bg-green-500';
+    if (state === 'cancelled') return 'bg-red-200';
+    return 'bg-gray-300';
   };
 
   if (isLoading) {
@@ -151,7 +261,7 @@ export default function Orders() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-8">
-            {user?.role === 'customer' ? 'My Orders' : 'Customer Orders'}
+            {getPageTitle()}
           </h1>
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <div className="inline-block">
@@ -169,7 +279,7 @@ export default function Orders() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-8">
-            {user?.role === 'customer' ? 'My Orders' : 'Customer Orders'}
+            {getPageTitle()}
           </h1>
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <p className="text-red-600 font-semibold">{error}</p>
@@ -190,7 +300,7 @@ export default function Orders() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-8">
-            {user?.role === 'customer' ? 'My Orders' : 'Customer Orders'}
+            {getPageTitle()}
           </h1>
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <Package size={48} className="text-gray-400 mx-auto mb-4" />
@@ -212,9 +322,7 @@ export default function Orders() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">
-          {user?.role === 'customer' ? 'My Orders' : 'Customer Orders'}
-        </h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-8">{getPageTitle()}</h1>
 
         <div className="space-y-6">
           {orders.map((order) => (
@@ -231,8 +339,8 @@ export default function Orders() {
                 <div className="flex items-center gap-3">
                   {getStatusIcon(order.status)}
                   <div>
-                    <p className="text-sm text-gray-600">Status</p>
-                    {user?.role !== 'customer' && editingOrderId === order.order_id ? (
+                    <p className="text-sm text-gray-600">{getStatusLabel()}</p>
+                    {canManageOrders && editingOrderId === order.order_id ? (
                       <select
                         value={editingStatus}
                         onChange={(e) => setEditingStatus(e.target.value)}
@@ -240,15 +348,15 @@ export default function Orders() {
                       >
                         <option value="pending">Pending</option>
                         <option value="confirmed">Confirmed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
                     ) : (
                       <p className="text-lg font-semibold text-gray-800 capitalize">{order.status}</p>
                     )}
                   </div>
-                  {user?.role !== 'customer' && editingOrderId === order.order_id ? (
+                  {canManageOrders && editingOrderId === order.order_id ? (
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleStatusUpdate(order.order_id, editingStatus)}
@@ -263,7 +371,7 @@ export default function Orders() {
                         Cancel
                       </button>
                     </div>
-                  ) : user?.role !== 'customer' ? (
+                  ) : canManageOrders ? (
                     <button
                       onClick={() => {
                         setEditingOrderId(order.order_id);
@@ -302,6 +410,14 @@ export default function Orders() {
                       </div>
                     </>
                   )}
+                  {canManageOrders && (
+                    <div>
+                      <p className="text-sm text-gray-600 font-semibold mb-2">Delivery Store</p>
+                      <p className="text-gray-800">
+                        {order.delivery_store_name || (order.assigned_delivery_store_id ? `#${order.assigned_delivery_store_id}` : 'Unassigned')}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600 font-semibold mb-2">Delivery Address</p>
                     <p className="text-gray-800">{order.delivery_address}</p>
@@ -309,6 +425,45 @@ export default function Orders() {
                   <div>
                     <p className="text-sm text-gray-600 font-semibold mb-2">City</p>
                     <p className="text-gray-800">{order.city}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-700">Delivery Timeline</p>
+                    {order.status === 'cancelled' && (
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                        Cancelled
+                      </span>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[640px] flex items-center">
+                      {timelineSteps.map((step, index) => {
+                        const state = getStepState(order.status, step);
+                        const isLast = index === timelineSteps.length - 1;
+                        const connectorState =
+                          order.status === 'cancelled'
+                            ? 'cancelled'
+                            : getStepState(order.status, timelineSteps[index + 1]);
+
+                        return (
+                          <div key={step} className="flex items-center flex-1 min-w-[120px]">
+                            <div className="flex flex-col items-center text-center">
+                              <div
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${getStepClass(state)}`}
+                              >
+                                {index + 1}
+                              </div>
+                              <p className="text-xs mt-2 text-gray-700">{getStepLabel(step)}</p>
+                            </div>
+                            {!isLast && (
+                              <div className={`h-1 flex-1 mx-2 rounded ${getConnectorClass(connectorState)}`}></div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -331,7 +486,61 @@ export default function Orders() {
                 )}
 
                 {/* Admin/staff actions */}
-                {user?.role !== 'customer' && order.status === 'pending' && (
+                {canManageOrders && order.status === 'confirmed' && (
+                  <div className="mt-6 pt-6 border-t grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-600 font-semibold mb-2">Assign Delivery Store</p>
+                      <select
+                        value={assignmentDrafts[order.order_id] || order.assigned_delivery_store_id || ''}
+                        onChange={(e) =>
+                          setAssignmentDrafts((prev) => ({
+                            ...prev,
+                            [order.order_id]: e.target.value,
+                          }))
+                        }
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                      >
+                        <option value="">Select a delivery store</option>
+                        {deliveryStores.map((store) => (
+                          <option key={store.user_id} value={store.user_id}>
+                            {store.username} {store.email ? `(${store.email})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => handleAssignDeliveryStore(order.order_id)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition"
+                    >
+                      Assign Store
+                    </button>
+                  </div>
+                )}
+
+                {isDeliveryStore && order.status === 'assigned' && (
+                  <div className="mt-6 pt-6 border-t flex gap-3">
+                    <button
+                      onClick={() => handleApproveDelivery(order.order_id)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
+                    >
+                      Approve for Delivery
+                    </button>
+                  </div>
+                )}
+
+                {isCustomer && order.status === 'out_for_delivery' && (
+                  <div className="mt-6 pt-6 border-t flex gap-3">
+                    <button
+                      onClick={() => handleStatusUpdate(order.order_id, 'received')}
+                      className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
+                    >
+                      Mark as Received
+                    </button>
+                  </div>
+                )}
+
+                {/* Admin/staff quick actions */}
+                {canManageOrders && order.status === 'pending' && (
                   <div className="mt-6 pt-6 border-t flex gap-3">
                     <button
                       onClick={() => handleStatusUpdate(order.order_id, 'confirmed')}
@@ -349,7 +558,7 @@ export default function Orders() {
                 )}
 
                 {/* Customer simulated payment: allow paying only when pending and not COD */}
-                {user?.role === 'customer' && order.status === 'pending' && order.payment_method !== 'cod' && (
+                {isCustomer && order.status === 'pending' && order.payment_method !== 'cod' && (
                   <div className="mt-6 pt-6 border-t flex gap-3">
                     <button
                       onClick={() => handleSimulatedPayment(order)}

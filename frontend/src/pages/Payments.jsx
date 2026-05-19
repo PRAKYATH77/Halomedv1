@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { CreditCard, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CreditCard, AlertCircle } from 'lucide-react';
+import { customerOrdersAPI } from '../services/api';
 
 export default function Payments() {
   const { user } = useAuth();
@@ -18,27 +19,9 @@ export default function Payments() {
   const fetchPayments = async () => {
     try {
       setIsLoading(true);
-      // Fetch customer orders instead of separate payment transactions
-      const response = await fetch('http://localhost:5000/api/orders', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch payments');
-      }
-
-      const data = await response.json();
-      const orders = data.data || data;
-      
-      // Filter by status if needed
-      let filteredOrders = orders;
-      if (filterStatus !== 'all') {
-        filteredOrders = orders.filter(order => order.status === filterStatus);
-      }
-      
-      setPayments(filteredOrders);
+      const res = await customerOrdersAPI.paymentsList({ status: filterStatus === 'all' ? undefined : filterStatus });
+      const data = res.data || res;
+      setPayments(data);
     } catch (error) {
       console.error('Error fetching payments:', error);
       setError('Failed to load payments. Please try again.');
@@ -47,26 +30,15 @@ export default function Payments() {
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle size={24} className="text-green-600" />;
-      case 'pending':
-        return <Clock size={24} className="text-yellow-600" />;
-      case 'failed':
-        return <AlertCircle size={24} className="text-red-600" />;
-      default:
-        return <CreditCard size={24} className="text-gray-600" />;
-    }
-  };
-
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800';
-      case 'shipped':
+      case 'assigned':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'out_for_delivery':
         return 'bg-blue-100 text-blue-800';
-      case 'delivered':
+      case 'received':
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
@@ -126,7 +98,7 @@ export default function Payments() {
         <div className="mb-6 bg-white rounded-lg shadow-lg p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Filter by Status</h2>
           <div className="flex gap-2 flex-wrap">
-            {['all', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => (
+            {['all', 'pending', 'confirmed', 'assigned', 'out_for_delivery', 'received', 'cancelled'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
@@ -186,7 +158,7 @@ export default function Payments() {
                       {order.customer_id}
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-blue-600">
-                      ₹{order.total_amount?.toFixed(2)}
+                      ₹{parseFloat(order.total_amount || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-800">
                       {order.phone_number}
@@ -200,7 +172,7 @@ export default function Payments() {
                           order.status
                         )}`}
                       >
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
@@ -225,7 +197,7 @@ export default function Payments() {
               <p className="text-3xl font-bold text-green-600">
                 ₹
                 {payments
-                  .reduce((sum, p) => sum + (p.total_amount || 0), 0)
+                  .reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0)
                   .toFixed(2)}
               </p>
             </div>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../services/api';
 import { Trash2, Edit2, Plus } from 'lucide-react';
+import { ordersAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
@@ -19,11 +22,30 @@ export default function Suppliers() {
     fetchSuppliers();
   }, []);
 
+  const { user } = useAuth();
+  const canCreateOrder = ['admin', 'staff'].includes(user?.role);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orderForm, setOrderForm] = useState({ supplier_id: '', itemsJson: '' });
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const items = JSON.parse(orderForm.itemsJson);
+      await ordersAPI.create({ supplier_id: parseInt(orderForm.supplier_id, 10), order_date: new Date().toISOString(), items });
+      setShowOrderForm(false);
+      setOrderForm({ supplier_id: '', itemsJson: '' });
+      alert('Supplier order created');
+    } catch (err) {
+      console.error('Failed to create supplier order:', err);
+      alert('Failed to create order. Ensure items JSON is valid.');
+    }
+  };
+
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const response = await axios.get('http://localhost:5000/suppliers', {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/suppliers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuppliers(response.data.data || []);
@@ -48,16 +70,16 @@ export default function Suppliers() {
     e.preventDefault();
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       
       if (editingId) {
         // Update
-        await axios.put(`http://localhost:5000/suppliers/${editingId}`, formData, {
+        await axios.put(`${API_BASE_URL}/suppliers/${editingId}`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
         // Create
-        await axios.post('http://localhost:5000/suppliers', formData, {
+        await axios.post(`${API_BASE_URL}/suppliers`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
@@ -89,8 +111,8 @@ export default function Suppliers() {
     if (window.confirm('Are you sure you want to delete this supplier?')) {
       try {
         setLoading(true);
-        const token = localStorage.getItem('authToken');
-        await axios.delete(`http://localhost:5000/suppliers/${id}`, {
+        const token = localStorage.getItem('token');
+        await axios.delete(`${API_BASE_URL}/suppliers/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setError('');
@@ -208,6 +230,24 @@ export default function Suppliers() {
                 >
                   Cancel
                 </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {canCreateOrder && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Create Supplier Order</h2>
+            <form onSubmit={handleOrderSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select required value={orderForm.supplier_id} onChange={e => setOrderForm(f => ({ ...f, supplier_id: e.target.value }))} className="input-field">
+                  <option value="">Select Supplier</option>
+                  {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
+                </select>
+                <textarea required value={orderForm.itemsJson} onChange={e => setOrderForm(f => ({ ...f, itemsJson: e.target.value }))} placeholder='Items JSON e.g. [{"medicine_id":1,"quantity":10,"unit_price":5}]' className="input-field h-24" />
+              </div>
+              <div>
+                <button type="submit" className="btn-primary">Create Order</button>
               </div>
             </form>
           </div>

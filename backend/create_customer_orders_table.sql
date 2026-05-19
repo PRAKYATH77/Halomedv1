@@ -7,11 +7,18 @@ CREATE TABLE IF NOT EXISTS customer_orders (
   zip_code VARCHAR(10) NOT NULL,
   phone_number VARCHAR(20) NOT NULL,
   payment_method VARCHAR(50) NOT NULL,
-  status ENUM('pending', 'confirmed', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+  status ENUM('pending', 'confirmed', 'assigned', 'out_for_delivery', 'received', 'cancelled') DEFAULT 'pending',
+  assigned_delivery_store_id INT NULL,
+  assigned_by INT NULL,
+  assigned_at TIMESTAMP NULL DEFAULT NULL,
+  approved_for_delivery_at TIMESTAMP NULL DEFAULT NULL,
+  received_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (order_id),
-  FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE
+  FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (assigned_delivery_store_id) REFERENCES users(user_id) ON DELETE SET NULL,
+  FOREIGN KEY (assigned_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS customer_order_items (

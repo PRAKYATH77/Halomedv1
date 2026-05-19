@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
 export default function Checkout() {
   const { cart, getTotalPrice, clearCart } = useCart();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -87,7 +86,7 @@ export default function Checkout() {
       console.log('Creating order with data:', orderData);
       console.log('Token:', token);
 
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +131,7 @@ export default function Checkout() {
             <p className="text-2xl font-bold text-green-600">{orderNumber}</p>
           </div>
           <p className="text-gray-600 mb-6">
-            We'll send you a confirmation email shortly. You can track your order in the Orders page.
+            We&apos;ll send you a confirmation email shortly. You can track your order in the Orders page.
           </p>
           <button
             onClick={() => navigate('/orders')}

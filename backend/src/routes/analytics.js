@@ -89,7 +89,13 @@ router.get('/dashboard/stats', authenticateToken, async (req, res) => {
         (SELECT COUNT(*) FROM sales) as total_sales,
         (SELECT SUM(final_amount) FROM sales) as total_revenue,
         (SELECT COUNT(*) FROM customers) as total_customers,
-        (SELECT COUNT(*) FROM suppliers) as total_suppliers
+        (SELECT COUNT(*) FROM suppliers) as total_suppliers,
+        (SELECT COUNT(*) FROM customer_orders) as total_orders,
+        (SELECT COUNT(*) FROM customer_orders WHERE status = 'confirmed') as confirmed_orders,
+        (SELECT COUNT(*) FROM customer_orders WHERE status = 'assigned') as assigned_orders,
+        (SELECT COUNT(*) FROM customer_orders WHERE status = 'out_for_delivery') as out_for_delivery_orders,
+        (SELECT COUNT(*) FROM customer_orders WHERE status = 'received') as received_orders,
+        (SELECT COUNT(*) FROM users WHERE role = 'delivery_store' AND is_active = TRUE) as delivery_stores
     `);
 
     sendResponse(res, 200, true, 'Dashboard statistics retrieved successfully', stats[0]);

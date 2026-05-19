@@ -12,6 +12,7 @@ import Inventory from './pages/Inventory';
 import Sales from './pages/Sales';
 import Prescriptions from './pages/Prescriptions';
 import Suppliers from './pages/Suppliers';
+import Users from './pages/Users';
 import Orders from './pages/Orders';
 import Payments from './pages/Payments';
 import Cart from './pages/Cart';
@@ -19,10 +20,10 @@ import Checkout from './pages/Checkout';
 import Analytics from './pages/Analytics';
 import Predictions from './pages/Predictions';
 import Profile from './pages/Profile';
+import RestockRequests from './pages/RestockRequests';
 
 // Components
 import Layout from './components/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -46,12 +47,14 @@ function App() {
                     <Route path="/sales" element={<Sales />} />
                     <Route path="/prescriptions" element={<Prescriptions />} />
                     <Route path="/suppliers" element={<Suppliers />} />
+                    <Route path="/users" element={<Users />} />
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/predictions" element={<Predictions />} />
+                    <Route path="/restock-requests" element={<RestockRequests />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

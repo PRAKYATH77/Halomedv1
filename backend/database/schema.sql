@@ -9,7 +9,7 @@ CREATE TABLE users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'staff', 'customer') NOT NULL DEFAULT 'staff',
+    role ENUM('admin', 'staff', 'delivery_store', 'customer') NOT NULL DEFAULT 'staff',
     email VARCHAR(100) UNIQUE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -228,6 +228,24 @@ CREATE TABLE reports (
     INDEX idx_report_type (report_type),
     INDEX idx_report_date (report_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 17. RestockRequests Table
+CREATE TABLE restock_requests (
+    request_id INT PRIMARY KEY AUTO_INCREMENT,
+    medicine_id INT NOT NULL,
+    requested_by INT NOT NULL,
+    quantity_requested INT NOT NULL,
+    status ENUM('pending','approved','rejected') DEFAULT 'pending',
+    admin_id INT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    approved_at TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id),
+    FOREIGN KEY (requested_by) REFERENCES users(user_id),
+    FOREIGN KEY (admin_id) REFERENCES users(user_id),
+    INDEX idx_status (status),
+    INDEX idx_medicine_id (medicine_id)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Create indexes for better query performance
 CREATE INDEX idx_batch_medicine ON medicine_batches(medicine_id);

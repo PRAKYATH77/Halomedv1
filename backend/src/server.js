@@ -15,6 +15,7 @@ import orderRoutes from './routes/orders.js';
 import customerOrderRoutes from './routes/customerOrders.js';
 import analyticsRoutes from './routes/analytics.js';
 import predictionRoutes from './routes/predictions.js';
+import restockRoutes from './routes/restockRequests.js';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/orders', orderRoutes);
 app.use('/api/orders', customerOrderRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/predictions', predictionRoutes);
+app.use('/restock', restockRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -69,11 +71,13 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     // Test database connection
-    const isConnected = await testConnection(pool);
+    // Test database connection with timeout
+    const connectionPromise = testConnection(pool);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 3000));
+    const isConnected = await Promise.race([connectionPromise, timeoutPromise]);
     
     if (!isConnected) {
-      console.error('Cannot start server without database connection');
-      process.exit(1);
+      console.warn('⚠️  Database connection not available, but server will start anyway');
     }
 
     app.listen(PORT, () => {

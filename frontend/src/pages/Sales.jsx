@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingCart, TrendingUp } from 'lucide-react';
+import { API_BASE_URL, salesAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+// Simple create-sale form for staff/admin
 
 function Sales() {
   const [sales, setSales] = useState([]);
@@ -11,11 +15,31 @@ function Sales() {
     fetchSales();
   }, [filterStatus]);
 
+  const { user } = useAuth();
+  const canCreate = ['admin', 'staff'].includes(user?.role);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ customer_id: '', itemsJson: '', total_amount: 0 });
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    try {
+      const items = JSON.parse(form.itemsJson);
+      await salesAPI.create({ customer_id: parseInt(form.customer_id, 10), items, total_amount: parseFloat(form.total_amount) });
+      setShowCreate(false);
+      setForm({ customer_id: '', itemsJson: '', total_amount: 0 });
+      fetchSales();
+      alert('Sale created');
+    } catch (err) {
+      console.error('Failed to create sale:', err);
+      alert('Failed to create sale; ensure items JSON is valid');
+    }
+  };
+
   const fetchSales = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -28,7 +52,7 @@ function Sales() {
       const data = await response.json();
       const orders = data.data || data;
       
-      // Filter orders by status (only show confirmed, shipped, delivered as sales)
+      // Filter orders by status for sales tracking
       const salesData = orders.filter(order => 
         filterStatus === 'all' ? true : order.status === filterStatus
       );
@@ -44,16 +68,18 @@ function Sales() {
   };
 
   const getTotalRevenue = () => {
-    return sales.reduce((total, sale) => total + (sale.total_amount || 0), 0);
+    return sales.reduce((total, sale) => total + parseFloat(sale.total_amount || 0), 0);
   };
 
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800';
-      case 'shipped':
+      case 'assigned':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'out_for_delivery':
         return 'bg-blue-100 text-blue-800';
-      case 'delivered':
+      case 'received':
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
@@ -80,7 +106,7 @@ function Sales() {
         <div className="mb-6 bg-white rounded-lg shadow-lg p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Filter by Status</h2>
           <div className="flex gap-2 flex-wrap">
-            {['all', 'confirmed', 'shipped', 'delivered'].map((status) => (
+            {['all', 'confirmed', 'assigned', 'out_for_delivery', 'received'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
@@ -99,6 +125,30 @@ function Sales() {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {canCreate && (
+          <div className="mb-6 flex justify-end">
+            <button onClick={() => setShowCreate(!showCreate)} className="btn-primary">
+              {showCreate ? 'Close' : 'Create Sale'}
+            </button>
+          </div>
+        )}
+
+        {showCreate && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Create Sale</h2>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input required placeholder="Customer ID" value={form.customer_id} onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))} className="input-field" />
+                <input required placeholder="Total amount" type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="input-field" />
+                <textarea required placeholder='Items JSON e.g. [{"medicine_id":1,"quantity":2,"unit_price":50}]' value={form.itemsJson} onChange={e => setForm(f => ({ ...f, itemsJson: e.target.value }))} className="input-field h-24" />
+              </div>
+              <div>
+                <button type="submit" className="btn-primary">Create</button>
+              </div>
+            </form>
           </div>
         )}
 
@@ -145,7 +195,7 @@ function Sales() {
                     <tr key={sale.order_id} className="border-b hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-800">#{sale.order_id}</td>
                       <td className="px-6 py-4 text-gray-600">{sale.customer_id}</td>
-                      <td className="px-6 py-4 font-semibold text-green-600">₹{sale.total_amount?.toFixed(2)}</td>
+                      <td className="px-6 py-4 font-semibold text-green-600">₹{parseFloat(sale.total_amount || 0).toFixed(2)}</td>
                       <td className="px-6 py-4 text-gray-600 capitalize">{sale.payment_method?.replace('_', ' ')}</td>
                       <td className="px-6 py-4 text-gray-600">
                         {sale.items && sale.items.length > 0 
@@ -155,7 +205,7 @@ function Sales() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(sale.status)}`}>
-                          {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
+                          {sale.status ? sale.status.charAt(0).toUpperCase() + sale.status.slice(1) : 'Unknown'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600">

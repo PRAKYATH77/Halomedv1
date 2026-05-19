@@ -159,4 +159,72 @@ router.post('/change-password', authenticateToken, async (req, res) => {
   }
 });
 
+// Get delivery store users for assignment
+router.get('/delivery-stores', authenticateToken, authorizeRole(['admin', 'staff']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const [users] = await pool.query(
+      "SELECT user_id, username, email, role, created_at FROM users WHERE role = 'delivery_store' AND is_active = TRUE ORDER BY username ASC"
+    );
+
+    sendResponse(res, 200, true, 'Delivery stores retrieved successfully', users);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Get supplier users for assignment
+router.get('/suppliers', authenticateToken, authorizeRole(['admin', 'staff']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const [users] = await pool.query(
+      "SELECT user_id, username, email, role, created_at FROM users WHERE role = 'supplier' AND is_active = TRUE ORDER BY username ASC"
+    );
+
+    sendResponse(res, 200, true, 'Suppliers retrieved successfully', users);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Update user role (admin only)
+router.patch('/users/:id/role', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const pool = req.app.locals.pool;
+
+    const validRoles = ['admin', 'staff', 'delivery_store', 'customer', 'supplier'];
+    if (!validRoles.includes(role)) {
+      return sendResponse(res, 400, false, 'Invalid role. Must be admin, staff, delivery_store, customer, or supplier');
+    }
+
+    const [result] = await pool.query(
+      'UPDATE users SET role = ? WHERE user_id = ?',
+      [role, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return sendResponse(res, 404, false, 'User not found');
+    }
+
+    sendResponse(res, 200, true, `User role updated to ${role} successfully`);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// List all users (admin only)
+router.get('/users', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const [users] = await pool.query(
+      'SELECT user_id, username, email, role, is_active, created_at FROM users ORDER BY created_at DESC'
+    );
+    sendResponse(res, 200, true, 'Users retrieved successfully', users);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
 export default router;

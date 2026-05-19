@@ -15,19 +15,28 @@ async function createTestUsers() {
     // Hash passwords
     const staffPass = await bcrypt.hash('staff123', 10);
     const customerPass = await bcrypt.hash('customer123', 10);
+    const deliveryStorePass = await bcrypt.hash('delivery123', 10);
+    const supplierPass = await bcrypt.hash('supplier123', 10);
 
     // Insert test users
     await connection.query(
       `INSERT IGNORE INTO users (username, password_hash, email, role, is_active) VALUES 
        (?, ?, ?, ?, TRUE), 
+       (?, ?, ?, ?, TRUE),
+       (?, ?, ?, ?, TRUE),
        (?, ?, ?, ?, TRUE)`,
-      ['staff', staffPass, 'staff@halomed.com', 'staff', 'customer', customerPass, 'customer@halomed.com', 'customer']
+      [
+        'staff', staffPass, 'staff@halomed.com', 'staff',
+        'customer', customerPass, 'customer@halomed.com', 'customer',
+        'delivery_store', deliveryStorePass, 'delivery@halomed.com', 'delivery_store',
+        'supplier1', supplierPass, 'supplier1@halomed.com', 'supplier',
+      ]
     );
 
     // Verify users
     const [users] = await connection.query(
-      'SELECT user_id, username, email, role FROM users WHERE username IN (?, ?, ?)',
-      ['admin', 'staff', 'customer']
+      'SELECT user_id, username, email, role FROM users WHERE username IN (?, ?, ?, ?, ?)',
+      ['admin', 'staff', 'customer', 'delivery_store', 'supplier1']
     );
 
     console.log('✅ Test users created successfully:\n');
@@ -42,6 +51,14 @@ async function createTestUsers() {
     console.log('Customer User:');
     console.log('  Username: customer');
     console.log('  Password: customer123\n');
+
+    console.log('Delivery Store User:');
+    console.log('  Username: delivery_store');
+    console.log('  Password: delivery123\n');
+    
+    console.log('Supplier User:');
+    console.log('  Username: supplier1');
+    console.log('  Password: supplier123\n');
     
     console.log('Database records:');
     users.forEach(user => {
