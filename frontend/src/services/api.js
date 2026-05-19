@@ -121,6 +121,7 @@ export const analyticsAPI = {
 export const predictionsAPI = {
   getAll: (params) => api.get('/predictions', { params }),
   getRecommendations: (predictionId) => api.get(`/predictions/recommendations/${predictionId}`),
+  getMedicineRecommendations: (disease) => api.get(`/predictions/medicines/${disease}`),
   trigger: () => api.post('/predictions/trigger'),
   create: (data) => api.post('/predictions', data),
 };

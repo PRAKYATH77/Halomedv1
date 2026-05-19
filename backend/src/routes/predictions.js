@@ -28,7 +28,54 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get recommendations
+// Get medicine recommendations for any disease (directly from ML service)
+router.get('/medicines/:disease', authenticateToken, async (req, res) => {
+  try {
+    const { disease } = req.params;
+    const mlBaseUrl = process.env.ML_API_URL || 'http://localhost:5001';
+
+    // Call ML service to get recommendations
+    const mlResponse = await axios.post(`${mlBaseUrl}/recommend-medicines`, {
+      disease: disease,
+    });
+
+    if (!mlResponse.data || !mlResponse.data.success || !mlResponse.data.data) {
+      return sendResponse(res, 500, false, 'ML service error', {
+        status: 'error',
+      });
+    }
+
+    const mlData = mlResponse.data.data;
+    const pool = req.app.locals.pool;
+
+    // Enrich with actual medicine data from database
+    const enrichedRecommendations = [];
+    for (const rec of mlData.recommended_medicines || []) {
+      const [medRows] = await pool.query(
+        'SELECT medicine_id, name, price, quantity FROM medicines WHERE name LIKE ? LIMIT 1',
+        [`%${rec.name}%`]
+      );
+
+      enrichedRecommendations.push({
+        ...rec,
+        medicine_id: medRows && medRows.length > 0 ? medRows[0].medicine_id : null,
+        db_price: medRows && medRows.length > 0 ? medRows[0].price : null,
+        current_stock: medRows && medRows.length > 0 ? medRows[0].quantity : null,
+      });
+    }
+
+    sendResponse(res, 200, true, 'Recommendations retrieved successfully', {
+      disease: mlData.disease,
+      recommended_medicines: enrichedRecommendations,
+      expected_demand_increase: mlData.expected_demand_increase,
+      expected_duration: mlData.expected_duration,
+    });
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Get recommendations for a specific prediction
 router.get('/recommendations/:predictionId', authenticateToken, async (req, res) => {
   try {
     const pool = req.app.locals.pool;

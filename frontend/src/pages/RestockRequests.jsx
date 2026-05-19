@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { medicinesAPI, restockRequestsAPI, usersAPI } from '../services/api';
+import { medicinesAPI, restockRequestsAPI, usersAPI, predictionsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { AlertTriangle, CheckCircle2, PackageOpen, Send, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, PackageOpen, Send, XCircle, Brain, Zap } from 'lucide-react';
 
 function RestockRequests() {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ function RestockRequests() {
   const [lowStock, setLowStock] = useState([]);
   const [requests, setRequests] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [mlSuggestions, setMlSuggestions] = useState(null);
   const [form, setForm] = useState({ medicine_id: '', quantity_requested: '', notes: '' });
 
   const pendingCount = useMemo(
@@ -38,6 +39,23 @@ function RestockRequests() {
       if (isAdmin) {
         const sres = await usersAPI.getSuppliers();
         setSuppliers(sres.data || []);
+        
+        // Fetch latest ML predictions for suggestions
+        try {
+          const predsRes = await predictionsAPI.getAll();
+          if (predsRes.data && predsRes.data.length > 0) {
+            const latestPred = predsRes.data[0];
+            const recRes = await predictionsAPI.getMedicineRecommendations(latestPred.predicted_disease);
+            setMlSuggestions({
+              disease: latestPred.predicted_disease,
+              riskLevel: latestPred.risk_level,
+              recommendations: recRes.data.recommended_medicines || [],
+              demandIncrease: recRes.data.expected_demand_increase,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch ML suggestions:', err);
+        }
       }
     } catch (error) {
       console.error('Failed to load restock requests:', error);
@@ -193,6 +211,47 @@ function RestockRequests() {
                       onClick={() => setForm((current) => ({ ...current, medicine_id: String(medicine.medicine_id) }))}
                     >
                       #{medicine.medicine_id} {medicine.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isAdmin && mlSuggestions && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3 text-blue-800">
+                  <Brain size={18} />
+                  <p className="font-semibold">ML Recommendations: {mlSuggestions.disease}</p>
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${
+                    mlSuggestions.riskLevel === 'high' ? 'bg-red-200 text-red-800' :
+                    mlSuggestions.riskLevel === 'medium' ? 'bg-yellow-200 text-yellow-800' :
+                    'bg-green-200 text-green-800'
+                  }`}>
+                    {mlSuggestions.riskLevel?.toUpperCase()} RISK
+                  </span>
+                </div>
+                <p className="text-sm text-blue-700 mb-3">
+                  Expected demand increase: <span className="font-semibold">{mlSuggestions.demandIncrease}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {mlSuggestions.recommendations.slice(0, 6).map((rec, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="px-3 py-2 rounded-full bg-white border border-blue-300 text-sm hover:bg-blue-100 flex items-center gap-1"
+                      onClick={() => {
+                        const med = lowStock.find(m => m.name.toLowerCase().includes(rec.name.toLowerCase()));
+                        if (med) {
+                          setForm((current) => ({ 
+                            ...current, 
+                            medicine_id: String(med.medicine_id),
+                            notes: `ML Suggested (Priority: ${rec.priority})` 
+                          }));
+                        }
+                      }}
+                    >
+                      <Zap size={14} />
+                      {rec.name}
                     </button>
                   ))}
                 </div>
