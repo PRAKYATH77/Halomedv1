@@ -14,6 +14,7 @@ import Prescriptions from './pages/Prescriptions';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Orders from './pages/Orders';
+import DeliveryTracking from './pages/DeliveryTracking';
 import Payments from './pages/Payments';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -21,6 +22,8 @@ import Analytics from './pages/Analytics';
 import Predictions from './pages/Predictions';
 import Profile from './pages/Profile';
 import RestockRequests from './pages/RestockRequests';
+import SupplierTasks from './pages/SupplierTasks';
+import CustomerAssistant from './pages/CustomerAssistant';
 
 // Components
 import Layout from './components/Layout';
@@ -49,12 +52,15 @@ function App() {
                     <Route path="/suppliers" element={<Suppliers />} />
                     <Route path="/users" element={<Users />} />
                     <Route path="/orders" element={<Orders />} />
+                    <Route path="/tracking/:orderId" element={<DeliveryTracking />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/predictions" element={<Predictions />} />
                     <Route path="/restock-requests" element={<RestockRequests />} />
+                    <Route path="/supplier-tasks" element={<SupplierTasks />} />
+                    <Route path="/assistant" element={<CustomerAssistant />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

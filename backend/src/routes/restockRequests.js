@@ -60,6 +60,29 @@ router.get('/my', authenticateToken, authorizeRole(['staff','admin']), async (re
   }
 });
 
+// Supplier: view assigned requests
+router.get('/supplier/my', authenticateToken, authorizeRole(['supplier']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const [rows] = await pool.query(
+      `SELECT rr.*, m.name as medicine_name, u.username as requested_by_username, a.username as admin_username,
+       su.username as supplier_username
+       FROM restock_requests rr
+       JOIN medicines m ON rr.medicine_id = m.medicine_id
+       JOIN users u ON rr.requested_by = u.user_id
+       LEFT JOIN users a ON rr.admin_id = a.user_id
+       LEFT JOIN users su ON rr.supplier_id = su.user_id
+       WHERE rr.supplier_id = ?
+       ORDER BY rr.created_at DESC`,
+      [req.user.userId]
+    );
+
+    sendResponse(res, 200, true, 'Supplier requests retrieved', rows);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
 // Admin: assign a supplier to a restock request
 router.patch('/:id/assign-supplier', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {

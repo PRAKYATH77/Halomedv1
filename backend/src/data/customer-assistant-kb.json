@@ -1,0 +1,170 @@
+[
+  {
+    "id": "customer-dashboard",
+    "title": "Browse medicines from the customer dashboard",
+    "tags": ["browse", "medicines", "dashboard", "filter", "cart"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Customers can browse medicines from the dashboard, filter by health condition, view stock status, and add in-stock medicines to the cart. The dashboard is the main place to discover medicines before checkout."
+  },
+  {
+    "id": "customer-checkout",
+    "title": "Checkout and payment flow",
+    "tags": ["checkout", "payment", "cod", "online", "order"],
+    "source": "backend/src/routes/customerOrders.js",
+    "answer": "The checkout flow creates a customer order with delivery address, city, zip code, phone number, payment method, and transaction id. Cash on delivery starts as confirmed, while online payments start as pending until payment is completed."
+  },
+  {
+    "id": "customer-order-status",
+    "title": "Order status timeline",
+    "tags": ["order", "status", "pending", "confirmed", "assigned", "out_for_delivery", "received"],
+    "source": "backend/src/routes/customerOrders.js",
+    "answer": "Customer orders move through the statuses pending, confirmed, assigned, out_for_delivery, and received. Customers can see their own orders and confirm receipt when an order is out for delivery or already delivered."
+  },
+  {
+    "id": "delivery-store-flow",
+    "title": "Delivery store workflow",
+    "tags": ["delivery", "delivery store", "assigned", "out for delivery", "received"],
+    "source": "frontend/src/pages/Orders.jsx",
+    "answer": "The delivery store role can see assigned orders and mark them out for delivery. After that, the customer can confirm receipt and the delivery status updates to received."
+  },
+  {
+    "id": "prescriptions",
+    "title": "Prescriptions and medical records",
+    "tags": ["prescriptions", "records", "customer"],
+    "source": "frontend/src/App.jsx",
+    "answer": "Customers have access to the Prescriptions page inside the app. Staff and admin also manage prescriptions, so it is the right place to review prescription-related information in the system."
+  },
+  {
+    "id": "orders-page",
+    "title": "Where to track orders",
+    "tags": ["orders", "track", "status", "delivery"],
+    "source": "frontend/src/pages/Orders.jsx",
+    "answer": "The Orders page shows the current order status, delivery assignment, and the timeline of each order. It is the best place to check whether an order is pending, confirmed, assigned, out for delivery, or received."
+  },
+  {
+    "id": "profile",
+    "title": "Profile and account access",
+    "tags": ["profile", "account", "login"],
+    "source": "frontend/src/App.jsx",
+    "answer": "The profile page is available after login so customers can review their account details inside the app. Role-based navigation keeps customers on customer-facing features only."
+  },
+  {
+    "id": "customer-support-boundary",
+    "title": "What the assistant should answer",
+    "tags": ["help", "support", "customer", "app"],
+    "source": "backend/src/routes/customerAssistant.js",
+    "answer": "This assistant is grounded in HALOmed app guidance. It should answer questions about browsing medicines, carts, checkout, orders, prescriptions, delivery tracking, and account usage, and clearly say when a question is outside the current knowledge base."
+  },
+  {
+    "id": "symptom-guidance-overview",
+    "title": "Symptom-to-medicine guidance",
+    "tags": ["symptom", "medicine", "duration", "fever", "cold", "cough", "pain", "digestion"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "HALOmed gives general symptom-to-medicine guidance: common medicine categories for symptom relief and typical short-term use."
+  },
+  {
+    "id": "headache-guidance",
+    "title": "Headache support",
+    "tags": ["headache", "migraine", "head pain"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Paracetamol (acetaminophen) is the common first-line option for simple headaches; follow label dosing."
+  },
+  {
+    "id": "runny-nose-guidance",
+    "title": "Runny nose (rhinorrhea) support",
+    "tags": ["runny", "runny nose", "rhinorrhea", "allergy", "congestion"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For a runny nose: try oral antihistamines (cetirizine, loratadine) for allergies, or saline and short-term decongestants for viral colds. Follow label directions."
+  },
+  {
+    "id": "fever-pain-guidance",
+    "title": "Fever and pain support",
+    "tags": ["fever", "pain", "headache", "bodyache", "temperature"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For fever or body pain: paracetamol (acetaminophen) is the usual first-line option; ibuprofen is an alternative when suitable. Use label dosing."
+  },
+  {
+    "id": "sore-throat-guidance",
+    "title": "Sore throat support",
+    "tags": ["sore throat", "throat", "pharyngitis"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For sore throat: lozenges, warm saline gargles, and paracetamol for pain relief are common options; follow product labels."
+  },
+  {
+    "id": "cough-guidance",
+    "title": "Cough support",
+    "tags": ["cough", "productive cough", "dry cough", "mucus"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For cough: use a suppressant like dextromethorphan for dry coughs, or an expectorant like guaifenesin for productive coughs; follow the label."
+  },
+  {
+    "id": "diarrhea-guidance",
+    "title": "Diarrhea support",
+    "tags": ["diarrhea", "loose stools", "stool"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For mild diarrhoea: stay hydrated and use oral rehydration; loperamide can reduce frequency in adults for short-term relief—follow the label."
+  },
+  {
+    "id": "congestion-guidance",
+    "title": "Nasal congestion support",
+    "tags": ["congestion", "nasal congestion", "blocked nose", "stuffy"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For nasal congestion: saline rinses, humidifiers, and short-term decongestant sprays can relieve blockage; follow product labels."
+  },
+  {
+    "id": "allergy-guidance",
+    "title": "Allergic rhinitis / allergy support",
+    "tags": ["allergy", "hay fever", "sneezing", "itchy"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For allergy symptoms: non-drowsy oral antihistamines (cetirizine, loratadine) commonly relieve sneezing and runny nose—follow the label."
+  },
+  {
+    "id": "nausea-guidance",
+    "title": "Nausea and vomiting support",
+    "tags": ["nausea", "vomit", "vomiting", "sick"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For mild nausea: ginger, antacids, or OTC antiemetics may help; sip fluids slowly and follow product labels." 
+  },
+  {
+    "id": "constipation-guidance",
+    "title": "Constipation support",
+    "tags": ["constipation", "hard stools", "bowel movement"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For constipation: increase fiber and fluids and consider gentle laxatives (polyethylene glycol) for short-term relief; follow product labels." 
+  },
+  {
+    "id": "minor-wound-guidance",
+    "title": "Minor cuts and wound care",
+    "tags": ["cut", "wound", "bleeding", "minor wound"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For minor cuts: clean with water, apply antiseptic or ointment, and dress the wound; follow product labels." 
+  },
+  {
+    "id": "cold-cough-guidance",
+    "title": "Cold and cough support",
+    "tags": ["cold", "cough", "sore throat", "runny nose", "congestion"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Cold and cough medicines relieve symptoms: choose products that match your cough type or congestion and follow the label." 
+  },
+  {
+    "id": "digestion-guidance",
+    "title": "Digestion support",
+    "tags": ["digestion", "stomach", "acidity", "indigestion", "gas", "nausea"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Digestion remedies depend on the symptom: antacids for acidity, anti-diarrhoeals for diarrhoea, and rehydration for fluid loss—follow labels." 
+  },
+  {
+    "id": "antibiotics-guidance",
+    "title": "Antibiotic safety note",
+    "tags": ["antibiotics", "infection", "bacterial", "antibiotic"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Antibiotics should only be used when prescribed for a suspected bacterial infection. The exact duration must follow the prescription, and the course should not be shortened or extended without clinical advice."
+  },
+  {
+    "id": "skin-vitamins-guidance",
+    "title": "Skin care and vitamins support",
+    "tags": ["skin", "vitamins", "supplement", "support"],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Skin care and vitamin questions usually map to the Skin Care or Vitamins categories. These products may support symptom management or general wellness, but exact benefit and duration vary by product and personal health needs."
+  }
+]

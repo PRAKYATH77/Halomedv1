@@ -1,7 +1,211 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Clock, CheckCircle, Truck, Edit2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Package, Clock, CheckCircle, Truck, Edit2, MapPinned, Navigation } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, customerOrdersAPI, deliveryStoresAPI } from '../services/api';
+
+const DELIVERY_HUB = {
+  lat: 12.9716,
+  lng: 77.5946,
+};
+
+const DELIVERY_SIMULATION_DURATION_SECONDS = 300;
+const DELIVERY_SIMULATION_STEP_SECONDS = 10;
+const DELIVERY_SIMULATION_STEPS = DELIVERY_SIMULATION_DURATION_SECONDS / DELIVERY_SIMULATION_STEP_SECONDS;
+
+const hashString = (value = '') => {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+};
+
+const roundCoordinate = (value) => Number(value.toFixed(6));
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const buildTrackingRoute = (order) => {
+  const seed = `${order.order_id}-${order.delivery_address || ''}-${order.city || ''}-${order.zip_code || ''}`;
+  const hash = hashString(seed);
+  const latOffset = 0.018 + (hash % 700) / 100000;
+  const lngOffset = 0.018 + (Math.floor(hash / 700) % 700) / 100000;
+  const latDirection = hash % 2 === 0 ? 1 : -1;
+  const lngDirection = Math.floor(hash / 2) % 2 === 0 ? 1 : -1;
+
+  return {
+    origin: DELIVERY_HUB,
+    destination: {
+      lat: roundCoordinate(DELIVERY_HUB.lat + latDirection * latOffset),
+      lng: roundCoordinate(DELIVERY_HUB.lng + lngDirection * lngOffset),
+    },
+  };
+};
+
+const interpolatePoint = (start, end, progress) => ({
+  lat: start.lat + (end.lat - start.lat) * progress,
+  lng: start.lng + (end.lng - start.lng) * progress,
+});
+
+const getTrackingSnapshot = (order) => {
+  if (!['out_for_delivery', 'received'].includes(order.status)) {
+    return null;
+  }
+
+  const { origin, destination } = buildTrackingRoute(order);
+  const approvedAt = order.approved_for_delivery_at ? new Date(order.approved_for_delivery_at).getTime() : null;
+  const elapsedSeconds = approvedAt ? Math.max(0, (Date.now() - approvedAt) / 1000) : 0;
+  const stepsCompleted = order.status === 'received'
+    ? DELIVERY_SIMULATION_STEPS
+    : clamp(Math.floor(elapsedSeconds / DELIVERY_SIMULATION_STEP_SECONDS), 0, DELIVERY_SIMULATION_STEPS);
+  const progress = DELIVERY_SIMULATION_STEPS === 0 ? 0 : stepsCompleted / DELIVERY_SIMULATION_STEPS;
+  const courierPosition = order.status === 'received'
+    ? destination
+    : interpolatePoint(origin, destination, progress);
+  const etaMinutes = order.status === 'received'
+    ? 0
+    : Math.max(0, Math.ceil((DELIVERY_SIMULATION_DURATION_SECONDS - elapsedSeconds) / 60));
+
+  return {
+    origin,
+    destination,
+    courierPosition,
+    progress: Math.round(progress * 100),
+    etaMinutes,
+    liveLabel: order.status === 'received'
+      ? 'Delivered'
+      : progress >= 0.9
+        ? 'Arriving now'
+        : progress >= 0.6
+          ? 'Near your area'
+          : progress >= 0.25
+            ? 'On the way'
+            : 'Leaving the hub',
+  };
+};
+
+const renderTrackingMap = (order) => {
+  const snapshot = getTrackingSnapshot(order);
+
+  if (!snapshot) {
+    return null;
+  }
+
+  const latPadding = 0.01;
+  const lngPadding = 0.01;
+  const minLat = Math.min(snapshot.origin.lat, snapshot.destination.lat) - latPadding;
+  const maxLat = Math.max(snapshot.origin.lat, snapshot.destination.lat) + latPadding;
+  const minLng = Math.min(snapshot.origin.lng, snapshot.destination.lng) - lngPadding;
+  const maxLng = Math.max(snapshot.origin.lng, snapshot.destination.lng) + lngPadding;
+
+  const projectPoint = (point) => ({
+    x: ((point.lng - minLng) / (maxLng - minLng)) * 100,
+    y: ((maxLat - point.lat) / (maxLat - minLat)) * 100,
+  });
+
+  const originPoint = projectPoint(snapshot.origin);
+  const destinationPoint = projectPoint(snapshot.destination);
+  const courierPoint = projectPoint(snapshot.courierPosition);
+  const routeGradientId = `route-gradient-${order.order_id}`;
+
+  return (
+    <div className="mt-6 pt-6 border-t">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <MapPinned size={16} /> Live Delivery Map
+          </p>
+          <p className="text-xs text-gray-500">Simulated courier movement refreshes every 10 seconds.</p>
+        </div>
+        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-sky-100 text-sky-700">
+          {snapshot.liveLabel}
+        </span>
+      </div>
+
+      <div className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-100 min-h-[280px] shadow-inner">
+        <div
+          className="absolute inset-0 opacity-50"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(59,130,246,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.14) 1px, transparent 1px)',
+            backgroundSize: '34px 34px',
+          }}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.9),transparent_26%),radial-gradient(circle_at_80%_12%,rgba(96,165,250,0.2),transparent_22%),radial-gradient(circle_at_70%_82%,rgba(14,165,233,0.12),transparent_24%)]" />
+
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id={routeGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0f766e" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
+          </defs>
+          <line
+            x1={originPoint.x}
+            y1={originPoint.y}
+            x2={destinationPoint.x}
+            y2={destinationPoint.y}
+            stroke={`url(#${routeGradientId})`}
+            strokeWidth="2.2"
+            strokeDasharray="3 2"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        <div
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${originPoint.x}%`, top: `${originPoint.y}%` }}
+        >
+          <div className="rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-semibold shadow-lg">
+            Hub
+          </div>
+        </div>
+
+        <div
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${destinationPoint.x}%`, top: `${destinationPoint.y}%` }}
+        >
+          <div className="rounded-full bg-rose-600 text-white px-3 py-1 text-xs font-semibold shadow-lg">
+            Your address
+          </div>
+        </div>
+
+        <div
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${courierPoint.x}%`, top: `${courierPoint.y}%` }}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="rounded-full bg-blue-600 text-white p-2 shadow-xl ring-4 ring-white/60 animate-pulse">
+              <Navigation size={16} className="rotate-45" />
+            </div>
+            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-blue-700 shadow-sm">
+              Courier
+            </span>
+          </div>
+        </div>
+
+        <div className="absolute left-4 top-4 rounded-2xl bg-white/90 backdrop-blur px-4 py-3 shadow-lg border border-sky-100 max-w-[220px]">
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Live tracking</p>
+          <p className="text-sm font-semibold text-gray-800 mt-1">{order.delivery_address}</p>
+          <p className="text-xs text-gray-500 mt-1">{order.city} {order.zip_code ? `• ${order.zip_code}` : ''}</p>
+        </div>
+
+        <div className="absolute right-4 bottom-4 rounded-2xl bg-gray-900/90 text-white px-4 py-3 shadow-lg max-w-[200px]">
+          <p className="text-xs uppercase tracking-[0.2em] text-white/60">Status</p>
+          <p className="text-sm font-semibold mt-1">{snapshot.liveLabel}</p>
+          <p className="text-xs text-white/70 mt-1">ETA: {snapshot.etaMinutes} min</p>
+          <div className="mt-3 h-2 rounded-full bg-white/15 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+              style={{ width: `${snapshot.progress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function Orders() {
   const { user } = useAuth();
@@ -22,6 +226,12 @@ export default function Orders() {
     if (canAssignOrders) {
       fetchDeliveryStores();
     }
+
+    const refreshInterval = setInterval(() => {
+      fetchOrders();
+    }, 10000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const fetchDeliveryStores = async () => {
@@ -466,6 +676,22 @@ export default function Orders() {
                     </div>
                   </div>
                 </div>
+
+                {['out_for_delivery', 'received'].includes(order.status) && (
+                  <div className="mt-6 pt-6 border-t flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">Live tracking available</p>
+                      <p className="text-xs text-gray-500">Open the dedicated delivery map to follow the courier.</p>
+                    </div>
+                    <Link
+                      to={`/tracking/${order.order_id}`}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+                    >
+                      <MapPinned size={16} />
+                      Track Delivery
+                    </Link>
+                  </div>
+                )}
 
                 {/* Order Items */}
                 {order.items && order.items.length > 0 && (

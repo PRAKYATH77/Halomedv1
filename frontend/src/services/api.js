@@ -46,6 +46,14 @@ export const medicinesAPI = {
   getLowStock: () => api.get('/medicines/stock/low'),
 };
 
+// Prescriptions API
+export const prescriptionsAPI = {
+  create: (data) => api.post('/prescriptions', data),
+  getAll: (params) => api.get('/prescriptions', { params }),
+  fulfill: (id) => api.put(`/prescriptions/${id}/fulfill`),
+  getUnfulfilled: () => api.get('/prescriptions/unfulfilled'),
+};
+
 // Inventory API
 export const inventoryAPI = {
   getLogs: (params) => api.get('/inventory', { params }),
@@ -62,13 +70,6 @@ export const salesAPI = {
   getSummary: (params) => api.get('/sales/summary/stats', { params }),
 };
 
-// Prescriptions API
-export const prescriptionsAPI = {
-  create: (data) => api.post('/prescriptions', data),
-  getAll: (params) => api.get('/prescriptions', { params }),
-  fulfill: (id) => api.put(`/prescriptions/${id}/fulfill`),
-  getUnfulfilled: () => api.get('/prescriptions/unfulfilled'),
-};
 
 // Suppliers API
 export const suppliersAPI = {
@@ -103,6 +104,7 @@ export const customerOrdersAPI = {
   create: (data) => api.post('/api/orders', data),
   getAll: (params) => api.get('/api/orders', { params }),
   getById: (id) => api.get(`/api/orders/${id}`),
+  getTracking: (id) => api.get(`/api/orders/${id}/tracking`),
   pay: (id, data) => api.post(`/api/orders/${id}/pay`, data),
   assignDeliveryStore: (id, deliveryStoreId) => api.patch(`/api/orders/${id}/assign-delivery-store`, { deliveryStoreId }),
   approveForDelivery: (id) => api.patch(`/api/orders/${id}/delivery/approve`),
@@ -131,6 +133,7 @@ export const restockRequestsAPI = {
   create: (data) => api.post('/restock', data),
   getAll: () => api.get('/restock'),
   getMine: () => api.get('/restock/my'),
+  getSupplierMine: () => api.get('/restock/supplier/my'),
   approve: (id) => api.patch(`/restock/${id}/approve`),
   reject: (id) => api.patch(`/restock/${id}/reject`),
   assignSupplier: (id, supplier_id) => api.patch(`/restock/${id}/assign-supplier`, { supplier_id }),
@@ -139,10 +142,10 @@ export const restockRequestsAPI = {
   deliveryStoreConfirm: (id) => api.patch(`/restock/${id}/delivery-store/confirm`),
 };
 
-// Users API (admin)
-export const usersAPI = {
-  getAll: () => api.get('/auth/users'),
-  updateRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
+// Customer assistant API
+export const assistantAPI = {
+  chat: (data) => api.post('/assistant/chat', data),
 };
+
 
 export default api;

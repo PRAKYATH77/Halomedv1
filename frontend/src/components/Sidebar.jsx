@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Home, Package, Pill, ShoppingCart, FileText, Users, Truck, BarChart3, Brain, LogOut, CreditCard, ClipboardList } from 'lucide-react';
+import { X, Home, Package, Pill, ShoppingCart, FileText, Users, Truck, BarChart3, Brain, LogOut, CreditCard, ClipboardList, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -18,9 +18,11 @@ function Sidebar({ onClose }) {
     { name: 'Cart', path: '/cart', icon: ShoppingCart, roles: ['customer'], badge: getCartCount() },
     { name: 'Prescriptions', path: '/prescriptions', icon: FileText, roles: ['admin', 'staff', 'customer'] },
     { name: user?.role === 'delivery_store' ? 'Delivery Tasks' : 'Orders', path: '/orders', icon: Truck, roles: ['admin', 'staff', 'delivery_store', 'customer'] },
+    { name: 'Assistant', path: '/assistant', icon: MessageCircle, roles: ['customer'] },
     { name: 'Payments', path: '/payments', icon: CreditCard, roles: ['admin', 'staff'] },
     { name: 'Suppliers', path: '/suppliers', icon: Users, roles: ['admin', 'staff'] },
     { name: 'Restock Requests', path: '/restock-requests', icon: ClipboardList, roles: ['admin', 'staff'] },
+    { name: 'Supplier Tasks', path: '/supplier-tasks', icon: ClipboardList, roles: ['supplier'] },
     { name: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['admin'] },
     { name: 'Predictions', path: '/predictions', icon: Brain, roles: ['admin', 'staff'] },
   ];

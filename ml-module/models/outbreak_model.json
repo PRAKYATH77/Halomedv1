@@ -1,0 +1,6 @@
+{
+  "diseases": ["Flu", "COVID-19", "Dengue", "Malaria", "Typhoid", "Common Cold", "Pneumonia"],
+  "risk_levels": ["low", "medium", "high"],
+  "description": "Lightweight JSON model placeholder for HALOmed demo. Used when binary joblib model not available.",
+  "created_at": "2026-05-20T00:00:00Z"
+}

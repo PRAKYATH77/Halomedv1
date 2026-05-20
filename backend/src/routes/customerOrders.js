@@ -13,6 +13,81 @@ const orderSelectQuery = `
   LEFT JOIN users u ON co.assigned_delivery_store_id = u.user_id
 `;
 
+// --- Tracking simulation helpers (server-side) ---
+const hashString = (value = '') => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const roundCoordinate = (v) => Number(Number(v).toFixed(6));
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const DELIVERY_HUB = { lat: 12.9716, lng: 77.5946 };
+const DELIVERY_SIMULATION_DURATION_SECONDS = 300;
+const DELIVERY_SIMULATION_STEP_SECONDS = 10;
+const DELIVERY_SIMULATION_STEPS = DELIVERY_SIMULATION_DURATION_SECONDS / DELIVERY_SIMULATION_STEP_SECONDS;
+
+const buildTrackingRoute = (order) => {
+  const seed = `${order.order_id}-${order.delivery_address || ''}-${order.city || ''}-${order.zip_code || ''}`;
+  const hash = hashString(seed);
+  const latOffset = 0.018 + (hash % 700) / 100000;
+  const lngOffset = 0.018 + (Math.floor(hash / 700) % 700) / 100000;
+  const latDirection = hash % 2 === 0 ? 1 : -1;
+  const lngDirection = Math.floor(hash / 2) % 2 === 0 ? 1 : -1;
+
+  return {
+    origin: DELIVERY_HUB,
+    destination: {
+      lat: roundCoordinate(DELIVERY_HUB.lat + latDirection * latOffset),
+      lng: roundCoordinate(DELIVERY_HUB.lng + lngDirection * lngOffset),
+    },
+  };
+};
+
+const interpolatePoint = (start, end, progress) => ({
+  lat: start.lat + (end.lat - start.lat) * progress,
+  lng: start.lng + (end.lng - start.lng) * progress,
+});
+
+const computeTrackingSnapshot = (order) => {
+  if (!['out_for_delivery', 'received'].includes(order.status)) return null;
+
+  const { origin, destination } = buildTrackingRoute(order);
+  const approvedAt = order.approved_for_delivery_at ? new Date(order.approved_for_delivery_at).getTime() : null;
+  const elapsedSeconds = approvedAt ? Math.max(0, (Date.now() - approvedAt) / 1000) : 0;
+  const stepsCompleted = order.status === 'received'
+    ? DELIVERY_SIMULATION_STEPS
+    : clamp(Math.floor(elapsedSeconds / DELIVERY_SIMULATION_STEP_SECONDS), 0, DELIVERY_SIMULATION_STEPS);
+  const progress = DELIVERY_SIMULATION_STEPS === 0 ? 0 : stepsCompleted / DELIVERY_SIMULATION_STEPS;
+  const courierPosition = order.status === 'received'
+    ? destination
+    : interpolatePoint(origin, destination, progress);
+  const etaMinutes = order.status === 'received'
+    ? 0
+    : Math.max(0, Math.ceil((DELIVERY_SIMULATION_DURATION_SECONDS - elapsedSeconds) / 60));
+
+  return {
+    origin,
+    destination,
+    courierPosition,
+    progress: Math.round(progress * 100),
+    etaMinutes,
+    liveLabel: order.status === 'received'
+      ? 'Delivered'
+      : progress >= 0.9
+        ? 'Arriving now'
+        : progress >= 0.6
+          ? 'Near your area'
+          : progress >= 0.25
+            ? 'On the way'
+            : 'Leaving the hub',
+  };
+};
+
 // Create customer order
 router.post('/', authenticateToken, async (req, res) => {
   const connection = await req.app.locals.pool.getConnection();
@@ -195,6 +270,90 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Server-side tracking snapshot for an order (simulated)
+router.get('/:id/tracking', authenticateToken, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+
+    const [orders] = await pool.query(
+      `${orderSelectQuery} WHERE co.order_id = ?`,
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return sendResponse(res, 404, false, 'Order not found');
+    }
+
+    // Permission checks mirror GET /:id
+    if (req.user.role === 'customer' && orders[0].customer_id !== req.user.userId) {
+      return sendResponse(res, 403, false, 'Unauthorized');
+    }
+
+    if (req.user.role === 'delivery_store' && orders[0].assigned_delivery_store_id !== req.user.userId) {
+      return sendResponse(res, 403, false, 'Unauthorized');
+    }
+
+    // Look for persisted tracking row
+    const [trackingRows] = await pool.query(
+      `SELECT courier_lat, courier_lng, progress, updated_at FROM order_tracking WHERE order_id = ?`,
+      [id]
+    );
+
+    const simulatedSnapshot = computeTrackingSnapshot(orders[0]);
+
+    if (trackingRows.length === 0) {
+      if (!simulatedSnapshot) {
+        return sendResponse(res, 200, true, 'No active tracking for this order', { available: false });
+      }
+      return sendResponse(res, 200, true, 'Tracking snapshot (simulated)', { available: true, snapshot: simulatedSnapshot });
+    }
+
+    const row = trackingRows[0];
+    const snapshot = simulatedSnapshot || {};
+    // Override courier position/progress with persisted values when present
+    snapshot.courierPosition = snapshot.courierPosition || {};
+    if (row.courier_lat != null && row.courier_lng != null) {
+      snapshot.courierPosition.lat = Number(row.courier_lat);
+      snapshot.courierPosition.lng = Number(row.courier_lng);
+    }
+    if (row.progress != null) snapshot.progress = Number(row.progress);
+    snapshot.updated_at = row.updated_at;
+
+    return sendResponse(res, 200, true, 'Tracking snapshot (persisted)', { available: true, snapshot });
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
+// Update tracking coordinates for an order (delivery store or staff)
+router.patch('/:id/tracking', authenticateToken, authorizeRole(['delivery_store','admin','staff']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { id } = req.params;
+    const { courier_lat, courier_lng, progress } = req.body;
+
+    const [orders] = await pool.query('SELECT order_id, assigned_delivery_store_id FROM customer_orders WHERE order_id = ?', [id]);
+    if (orders.length === 0) return sendResponse(res, 404, false, 'Order not found');
+
+    // If delivery_store, ensure it's assigned to them
+    if (req.user.role === 'delivery_store' && Number(orders[0].assigned_delivery_store_id) !== Number(req.user.userId)) {
+      return sendResponse(res, 403, false, 'This order is not assigned to you');
+    }
+
+    await pool.query(
+      `INSERT INTO order_tracking (order_id, courier_lat, courier_lng, progress, updated_at)
+       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE courier_lat = VALUES(courier_lat), courier_lng = VALUES(courier_lng), progress = VALUES(progress), updated_at = CURRENT_TIMESTAMP`,
+      [id, courier_lat || null, courier_lng || null, progress != null ? progress : 0]
+    );
+
+    return sendResponse(res, 200, true, 'Tracking updated');
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
 // Update order status
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
@@ -364,6 +523,20 @@ router.patch('/:id/delivery/approve', authenticateToken, authorizeRole(['deliver
        WHERE order_id = ?`,
       [id]
     );
+
+    // Insert initial tracking row (origin position at hub) for persistent tracking
+    try {
+      const { origin, destination } = buildTrackingRoute({ order_id: id, delivery_address: orders[0].delivery_address, city: orders[0].city, zip_code: orders[0].zip_code });
+      await pool.query(
+        `INSERT INTO order_tracking (order_id, courier_lat, courier_lng, progress, updated_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE courier_lat = VALUES(courier_lat), courier_lng = VALUES(courier_lng), progress = VALUES(progress), updated_at = CURRENT_TIMESTAMP`,
+        [id, origin.lat, origin.lng, 0]
+      );
+    } catch (tErr) {
+      // non-fatal: log and continue
+      console.warn('Failed to initialize order_tracking for', id, tErr.message);
+    }
 
     sendResponse(res, 200, true, 'Order approved for delivery');
   } catch (error) {

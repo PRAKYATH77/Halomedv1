@@ -3,6 +3,9 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import createPool, { testConnection } from './config/database.js';
 import { requestLogger, errorHandler } from './middleware/auth.js';
+import fs from 'fs';
+import path from 'path';
+import { startTrackingSimulator } from './utils/tracker.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -16,6 +19,7 @@ import customerOrderRoutes from './routes/customerOrders.js';
 import analyticsRoutes from './routes/analytics.js';
 import predictionRoutes from './routes/predictions.js';
 import restockRoutes from './routes/restockRequests.js';
+import customerAssistantRoutes from './routes/customerAssistant.js';
 
 dotenv.config();
 
@@ -34,6 +38,33 @@ app.use(requestLogger);
 // Store pool in app for use in routes
 app.locals.pool = pool;
 
+// Run SQL migrations located in backend/migrations (simple runner)
+const runMigrations = async () => {
+  try {
+    // migrations are relative to backend working directory
+    let migrationsDir = path.resolve(process.cwd(), 'migrations');
+    // fallback if started from repo root
+    if (!fs.existsSync(migrationsDir)) {
+      migrationsDir = path.resolve(process.cwd(), 'backend', 'migrations');
+    }
+    if (!fs.existsSync(migrationsDir)) return;
+    const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      if (!sql.trim()) continue;
+      try {
+        // Execute statements (may contain multiple statements)
+        await pool.query(sql);
+        console.log(`Applied migration: ${file}`);
+      } catch (err) {
+        console.warn(`Migration ${file} may have partially applied or already exists:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to run migrations:', err.message);
+  }
+};
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/medicines', medicineRoutes);
@@ -46,6 +77,7 @@ app.use('/api/orders', customerOrderRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/predictions', predictionRoutes);
 app.use('/restock', restockRoutes);
+app.use('/assistant', customerAssistantRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -78,6 +110,15 @@ const startServer = async () => {
     
     if (!isConnected) {
       console.warn('⚠️  Database connection not available, but server will start anyway');
+    }
+    // Run migrations then start background simulator
+    await runMigrations();
+    try {
+      const trackerInterval = startTrackingSimulator(pool);
+      app.locals.trackerInterval = trackerInterval;
+      console.log('Background tracking simulator started');
+    } catch (err) {
+      console.warn('Failed to start tracking simulator:', err.message);
     }
 
     app.listen(PORT, () => {

@@ -142,6 +142,13 @@ function RestockRequests() {
     rejected: 'badge badge-error',
   };
 
+  const getSupplierStatusClass = (supplierStatus) => {
+    if (supplierStatus === 'assigned') return 'badge badge-info';
+    if (supplierStatus === 'out_for_delivery') return 'badge badge-primary';
+    if (supplierStatus === 'delivered') return 'badge badge-success';
+    return 'badge badge-ghost';
+  };
+
   if (loading) {
     return <div className="text-center py-12">Loading restock requests...</div>;
   }
@@ -306,7 +313,14 @@ function RestockRequests() {
                       <div className="flex flex-col gap-1">
                         <span className={statusClass[request.status] || 'badge'}>{request.status}</span>
                         {request.supplier_status && (
-                          <span className="text-xs text-gray-600">Supplier: {request.supplier_status}</span>
+                          <span className={getSupplierStatusClass(request.supplier_status)}>
+                            Supplier: {request.supplier_status}
+                          </span>
+                        )}
+                        {request.delivery_store_received_at && (
+                          <span className="badge badge-success">
+                            Delivery store received
+                          </span>
                         )}
                       </div>
                     </td>
@@ -336,10 +350,21 @@ function RestockRequests() {
                       ) : isAdmin && request.status === 'approved' ? (
                         <div className="flex flex-col gap-2">
                           {request.supplier_id ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">Assigned to: {request.supplier_username || request.supplier_id}</span>
-                              <button className="btn-sm" onClick={() => handleSupplierAction(request.request_id, 'out')}>Mark Out For Delivery</button>
-                              <button className="btn-sm" onClick={() => handleSupplierAction(request.request_id, 'delivered')}>Mark Delivered</button>
+                            <div className="flex flex-col gap-2">
+                              <div className="text-sm">
+                                Assigned to: {request.supplier_username || request.supplier_id}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <button className="btn-sm" onClick={() => handleSupplierAction(request.request_id, 'out')}>
+                                  Mark Out For Delivery
+                                </button>
+                                <button className="btn-sm" onClick={() => handleSupplierAction(request.request_id, 'delivered')}>
+                                  Mark Delivered
+                                </button>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Workflow: Admin approved → Supplier updates status → Delivery store confirms receipt
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
