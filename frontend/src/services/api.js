@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5003';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -52,6 +52,7 @@ export const prescriptionsAPI = {
   getAll: (params) => api.get('/prescriptions', { params }),
   fulfill: (id) => api.put(`/prescriptions/${id}/fulfill`),
   getUnfulfilled: () => api.get('/prescriptions/unfulfilled'),
+  upload: (formData, onUploadProgress) => api.post('/prescriptions/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }, onUploadProgress }),
 };
 
 // Inventory API
@@ -105,6 +106,7 @@ export const customerOrdersAPI = {
   getAll: (params) => api.get('/api/orders', { params }),
   getById: (id) => api.get(`/api/orders/${id}`),
   getTracking: (id) => api.get(`/api/orders/${id}/tracking`),
+  updateTracking: (id, data) => api.patch(`/api/orders/${id}/tracking`, data),
   pay: (id, data) => api.post(`/api/orders/${id}/pay`, data),
   assignDeliveryStore: (id, deliveryStoreId) => api.patch(`/api/orders/${id}/assign-delivery-store`, { deliveryStoreId }),
   approveForDelivery: (id) => api.patch(`/api/orders/${id}/delivery/approve`),
@@ -134,12 +136,20 @@ export const restockRequestsAPI = {
   getAll: () => api.get('/restock'),
   getMine: () => api.get('/restock/my'),
   getSupplierMine: () => api.get('/restock/supplier/my'),
+  getDeliveryStoreMonitor: () => api.get('/restock/delivery-store/monitor'),
   approve: (id) => api.patch(`/restock/${id}/approve`),
   reject: (id) => api.patch(`/restock/${id}/reject`),
   assignSupplier: (id, supplier_id) => api.patch(`/restock/${id}/assign-supplier`, { supplier_id }),
   supplierOutForDelivery: (id) => api.patch(`/restock/${id}/supplier/out-for-delivery`),
   supplierMarkDelivered: (id) => api.patch(`/restock/${id}/supplier/mark-delivered`),
   deliveryStoreConfirm: (id) => api.patch(`/restock/${id}/delivery-store/confirm`),
+};
+
+// Payments API (Razorpay sandbox)
+export const paymentsAPI = {
+  createRazorpayOrder: (data) => api.post('/payments/razorpay', data),
+  verifyRazorpayPayment: (data) => api.post('/payments/verify', data),
+  simulateRazorpayPayment: (data) => api.post('/payments/simulate', data),
 };
 
 // Customer assistant API

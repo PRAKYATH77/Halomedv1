@@ -8,5 +8,7 @@ ALTER TABLE customer_orders
   ADD CONSTRAINT fk_customer_orders_delivery_store FOREIGN KEY (assigned_delivery_store_id) REFERENCES users(user_id) ON DELETE SET NULL,
   ADD CONSTRAINT fk_customer_orders_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(user_id) ON DELETE SET NULL;
 
-ALTER TABLE users
-  MODIFY COLUMN role ENUM('admin', 'staff', 'delivery_store', 'customer') NOT NULL DEFAULT 'staff';
+-- NOTE: users.role was adjusted in a previous migration (add_supplier_role).
+-- Avoid changing the users.role enum here to prevent conflicts with prior migrations.
+-- If you need to adjust `users.role` further, add a dedicated migration that
+-- is aware of existing values and runs safely.

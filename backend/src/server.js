@@ -6,6 +6,7 @@ import { requestLogger, errorHandler } from './middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
 import { startTrackingSimulator } from './utils/tracker.js';
+import { startPredictionScheduler } from './utils/predictionScheduler.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -20,6 +21,7 @@ import analyticsRoutes from './routes/analytics.js';
 import predictionRoutes from './routes/predictions.js';
 import restockRoutes from './routes/restockRequests.js';
 import customerAssistantRoutes from './routes/customerAssistant.js';
+import paymentsRoutes from './routes/payments.js';
 
 dotenv.config();
 
@@ -31,9 +33,25 @@ const pool = createPool();
 
 // Middleware
 app.use(cors());
+
+// Razorpay webhook signatures must be verified against the raw request body.
+// Register raw parsing before the global JSON parser so Express does not mutate the payload.
+app.use('/payments/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+
+// Serve uploaded static files (prescriptions, etc.) from backend/uploads
+try {
+  const uploadsPath = path.resolve(process.cwd(), 'backend', 'uploads');
+  if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsPath));
+} catch (err) {
+  console.warn('Failed to configure static uploads serving:', err.message);
+}
 
 // Store pool in app for use in routes
 app.locals.pool = pool;
@@ -53,8 +71,16 @@ const runMigrations = async () => {
       const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
       if (!sql.trim()) continue;
       try {
-        // Execute statements (may contain multiple statements)
-        await pool.query(sql);
+        // Split into individual statements to avoid driver errors when multiple statements are present
+        const stmts = sql.split(/;\s*\n/).map(s => s.trim()).filter(Boolean);
+        for (const stmt of stmts) {
+          try {
+            await pool.query(stmt);
+          } catch (innerErr) {
+            // log and continue with next statement
+            console.warn(`Migration ${file} statement may have partially applied or already exists:`, innerErr.message);
+          }
+        }
         console.log(`Applied migration: ${file}`);
       } catch (err) {
         console.warn(`Migration ${file} may have partially applied or already exists:`, err.message);
@@ -78,6 +104,7 @@ app.use('/analytics', analyticsRoutes);
 app.use('/predictions', predictionRoutes);
 app.use('/restock', restockRoutes);
 app.use('/assistant', customerAssistantRoutes);
+app.use('/payments', paymentsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -119,6 +146,13 @@ const startServer = async () => {
       console.log('Background tracking simulator started');
     } catch (err) {
       console.warn('Failed to start tracking simulator:', err.message);
+    }
+
+    try {
+      const predictionInterval = startPredictionScheduler(pool);
+      app.locals.predictionInterval = predictionInterval;
+    } catch (err) {
+      console.warn('Failed to start prediction scheduler:', err.message);
     }
 
     app.listen(PORT, () => {

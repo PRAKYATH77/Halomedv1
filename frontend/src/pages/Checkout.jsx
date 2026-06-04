@@ -2,7 +2,30 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import { API_BASE_URL } from '../services/api';
+import { API_BASE_URL, paymentsAPI } from '../services/api';
+
+const loadRazorpayCheckout = () => {
+  if (window.Razorpay) {
+    return Promise.resolve();
+  }
+
+  const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      existingScript.addEventListener('load', resolve, { once: true });
+      existingScript.addEventListener('error', reject, { once: true });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+};
 
 export default function Checkout() {
   const { cart, getTotalPrice, clearCart } = useCart();
@@ -103,14 +126,87 @@ export default function Checkout() {
       }
 
       const orderId = data.data?.orderId || data.data?.order_id;
-      setOrderNumber('ORDER_' + orderId);
-      setOrderPlaced(true);
-      clearCart();
+      // If online payment selected, initiate Razorpay sandbox flow
+      if (formData.paymentMethod !== 'cod') {
+        try {
+          // create razorpay order on backend
+          const createRes = await paymentsAPI.createRazorpayOrder({ amount: finalTotal, receipt: String(orderId) });
+          const payload = createRes.data || createRes;
+          const rOrder = payload.order || payload.data?.order || payload;
+          const key_id = payload.key_id || payload.data?.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
-      // Redirect after 3 seconds
-      setTimeout(() => {
-        navigate('/orders');
-      }, 3000);
+          if (!key_id || !rOrder?.id || !rOrder?.amount || !rOrder?.currency) {
+            throw new Error('Razorpay order details are incomplete. Check backend Razorpay key configuration.');
+          }
+
+          // load Razorpay checkout script
+          await loadRazorpayCheckout();
+
+          if (!window.Razorpay) {
+            throw new Error('Razorpay checkout script did not load.');
+          }
+
+          const options = {
+            key: key_id,
+            amount: rOrder.amount,
+            currency: rOrder.currency,
+            name: 'HALOmed',
+            description: `Order ${orderId}`,
+            order_id: rOrder.id,
+            handler: async (response) => {
+              try {
+                await paymentsAPI.verifyRazorpayPayment({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  order_id: orderId,
+                });
+                setOrderNumber('ORDER_' + orderId);
+                setOrderPlaced(true);
+                clearCart();
+                setTimeout(() => navigate('/orders'), 3000);
+              } catch (err) {
+                console.error('Payment verification failed', err);
+                alert('Payment verification failed. Please contact support.');
+              }
+            },
+            prefill: { contact: formData.phoneNumber },
+            theme: { color: '#0ea5a4' },
+            modal: {
+              ondismiss: () => {
+                setIsProcessing(false);
+              },
+            },
+          };
+
+          // @ts-ignore
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        } catch (err) {
+          console.error('Razorpay flow error', err);
+          if (import.meta.env.DEV) {
+            try {
+              await paymentsAPI.simulateRazorpayPayment({ order_id: orderId });
+              setOrderNumber('ORDER_' + orderId);
+              setOrderPlaced(true);
+              clearCart();
+              setTimeout(() => navigate('/orders'), 3000);
+              return;
+            } catch (simulateErr) {
+              console.error('Local payment simulation failed', simulateErr);
+            }
+          }
+          alert(err.message || 'Failed to initiate payment. Please try again.');
+        }
+      } else {
+        setOrderNumber('ORDER_' + orderId);
+        setOrderPlaced(true);
+        clearCart();
+        // Redirect after 3 seconds
+        setTimeout(() => {
+          navigate('/orders');
+        }, 3000);
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       alert(error.message || 'Failed to place order. Please try again.');

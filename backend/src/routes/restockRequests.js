@@ -83,6 +83,30 @@ router.get('/supplier/my', authenticateToken, authorizeRole(['supplier']), async
   }
 });
 
+// Delivery store: view active supplier deliveries to monitor inbound restocks
+router.get('/delivery-store/monitor', authenticateToken, authorizeRole(['delivery_store']), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const [rows] = await pool.query(
+      `SELECT rr.*, m.name as medicine_name, u.username as requested_by_username, a.username as admin_username,
+       su.username as supplier_username
+       FROM restock_requests rr
+       JOIN medicines m ON rr.medicine_id = m.medicine_id
+       JOIN users u ON rr.requested_by = u.user_id
+       LEFT JOIN users a ON rr.admin_id = a.user_id
+       LEFT JOIN users su ON rr.supplier_id = su.user_id
+       WHERE rr.supplier_id IS NOT NULL
+         AND rr.supplier_status IN ('assigned', 'out_for_delivery', 'delivered')
+         AND rr.delivery_store_received_at IS NULL
+       ORDER BY rr.created_at DESC`
+     );
+
+    sendResponse(res, 200, true, 'Delivery store monitoring data retrieved', rows);
+  } catch (error) {
+    handleError(error, res);
+  }
+});
+
 // Admin: assign a supplier to a restock request
 router.patch('/:id/assign-supplier', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {

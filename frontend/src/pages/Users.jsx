@@ -85,6 +85,7 @@ export default function Users() {
                         <option value="admin">admin</option>
                         <option value="staff">staff</option>
                         <option value="delivery_store">delivery_store</option>
+                        <option value="supplier">supplier</option>
                         <option value="customer">customer</option>
                       </select>
                     </td>

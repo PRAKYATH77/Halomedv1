@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { medicinesAPI, restockRequestsAPI, usersAPI, predictionsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { AlertTriangle, CheckCircle2, PackageOpen, Send, XCircle, Brain, Zap } from 'lucide-react';
+import TrackingMap from '../components/TrackingMap';
+import { buildRestockTrackingSnapshot } from '../utils/restockTracking';
 
 function RestockRequests() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isDeliveryStore = user?.role === 'delivery_store';
   const canRequest = ['admin', 'staff'].includes(user?.role);
 
   const [loading, setLoading] = useState(true);
@@ -16,6 +19,7 @@ function RestockRequests() {
   const [suppliers, setSuppliers] = useState([]);
   const [mlSuggestions, setMlSuggestions] = useState(null);
   const [form, setForm] = useState({ medicine_id: '', quantity_requested: '', notes: '' });
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   const pendingCount = useMemo(
     () => requests.filter((request) => request.status === 'pending').length,
@@ -28,13 +32,18 @@ function RestockRequests() {
 
   const fetchData = async () => {
     try {
-      const requestsPromise = isAdmin ? restockRequestsAPI.getAll() : restockRequestsAPI.getMine();
+      const requestsPromise = isAdmin
+        ? restockRequestsAPI.getAll()
+        : isDeliveryStore
+          ? restockRequestsAPI.getDeliveryStoreMonitor()
+          : restockRequestsAPI.getMine();
       const [requestsRes, lowStockRes] = await Promise.all([
         requestsPromise,
         medicinesAPI.getLowStock(),
       ]);
 
       setRequests(requestsRes.data || []);
+      setSelectedRequestId((current) => current || requestsRes.data?.[0]?.request_id || null);
       setLowStock(lowStockRes.data || []);
       if (isAdmin) {
         const sres = await usersAPI.getSuppliers();
@@ -148,6 +157,11 @@ function RestockRequests() {
     if (supplierStatus === 'delivered') return 'badge badge-success';
     return 'badge badge-ghost';
   };
+
+  const selectedRequest = requests.find((request) => request.request_id === selectedRequestId) || requests[0] || null;
+  const trackingSnapshot = isDeliveryStore || user?.role === 'supplier'
+    ? buildRestockTrackingSnapshot(selectedRequest)
+    : null;
 
   if (loading) {
     return <div className="text-center py-12">Loading restock requests...</div>;
@@ -275,6 +289,31 @@ function RestockRequests() {
         </div>
       )}
 
+      {trackingSnapshot && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Restock Route Monitor</h2>
+              <p className="text-sm text-gray-600">Road route from supplier to delivery store.</p>
+            </div>
+            {requests.length > 1 && (
+              <select
+                className="input-field max-w-xs"
+                value={selectedRequestId || ''}
+                onChange={(event) => setSelectedRequestId(Number(event.target.value))}
+              >
+                {requests.map((request) => (
+                  <option key={request.request_id} value={request.request_id}>
+                    #{request.request_id} - {request.medicine_name || `Medicine #${request.medicine_id}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <TrackingMap snapshot={trackingSnapshot} height={380} />
+        </div>
+      )}
+
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
           <PackageOpen className="text-primary" size={20} />
@@ -347,13 +386,25 @@ function RestockRequests() {
                             Reject
                           </button>
                         </div>
-                      ) : isAdmin && request.status === 'approved' ? (
+                      ) : (isAdmin || user?.role === 'supplier') && request.status === 'approved' ? (
                         <div className="flex flex-col gap-2">
                           {request.supplier_id ? (
                             <div className="flex flex-col gap-2">
-                              <div className="text-sm">
-                                Assigned to: {request.supplier_username || request.supplier_id}
-                              </div>
+                              {isAdmin && (
+                                <div className="text-sm">
+                                  Assigned to: {request.supplier_username || request.supplier_id}
+                                </div>
+                              )}
+                              
+                              {/* Provide Delivery Store Location to the Supplier */}
+                              {user?.role === 'supplier' && (
+                                <div className="text-sm p-2 bg-blue-50 text-blue-800 rounded border border-blue-200">
+                                  <div className="font-semibold mb-1">📍 Delivery Destination:</div>
+                                  <div>Delivery Store #{request.requested_by}</div>
+                                  <div className="text-xs mt-1">123 Central Pharmacy Hub<br/>Koramangala, Bangalore</div>
+                                </div>
+                              )}
+
                               <div className="flex flex-wrap gap-2">
                                 <button className="btn-sm" onClick={() => handleSupplierAction(request.request_id, 'out')}>
                                   Mark Out For Delivery
@@ -367,14 +418,16 @@ function RestockRequests() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <select defaultValue="" className="input-field" onChange={(e) => handleAssignSupplier(request.request_id, Number(e.target.value))}>
-                                <option value="">Assign Supplier</option>
-                                {suppliers.map((s) => (
-                                  <option key={s.user_id} value={s.user_id}>{s.username}</option>
-                                ))}
-                              </select>
-                            </div>
+                            isAdmin && (
+                              <div className="flex items-center gap-2">
+                                <select defaultValue="" className="input-field" onChange={(e) => handleAssignSupplier(request.request_id, Number(e.target.value))}>
+                                  <option value="">Assign Supplier</option>
+                                  {suppliers.map((s) => (
+                                    <option key={s.user_id} value={s.user_id}>{s.username}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )
                           )}
                         </div>
                       ) : user?.role === 'delivery_store' && request.supplier_status === 'delivered' && !request.delivery_store_received_at ? (

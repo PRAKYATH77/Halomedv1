@@ -14,3 +14,9 @@ node_modules/
 dist/
 .vite/
 .venv/
+
+# Environment variables
+.env
+.env.*
+!.env.template
+!.env.example

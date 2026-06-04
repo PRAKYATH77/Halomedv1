@@ -23,6 +23,7 @@ export default function Suppliers() {
   }, []);
 
   const { user } = useAuth();
+  const canManageSuppliers = user?.role === 'admin';
   const canCreateOrder = ['admin', 'staff'].includes(user?.role);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderForm, setOrderForm] = useState({ supplier_id: '', itemsJson: '' });
@@ -137,13 +138,15 @@ export default function Suppliers() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Supplier Management</h1>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition"
-          >
-            <Plus size={20} />
-            Add Supplier
-          </button>
+          {canManageSuppliers && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition"
+            >
+              <Plus size={20} />
+              Add Supplier
+            </button>
+          )}
         </div>
 
         {/* Error Message */}
@@ -154,7 +157,7 @@ export default function Suppliers() {
         )}
 
         {/* Add/Edit Form */}
-        {showForm && (
+        {showForm && canManageSuppliers && (
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <h2 className="text-2xl font-bold mb-6">
               {editingId ? 'Edit Supplier' : 'Add New Supplier'}
@@ -235,23 +238,7 @@ export default function Suppliers() {
           </div>
         )}
 
-        {canCreateOrder && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Create Supplier Order</h2>
-            <form onSubmit={handleOrderSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select required value={orderForm.supplier_id} onChange={e => setOrderForm(f => ({ ...f, supplier_id: e.target.value }))} className="input-field">
-                  <option value="">Select Supplier</option>
-                  {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
-                </select>
-                <textarea required value={orderForm.itemsJson} onChange={e => setOrderForm(f => ({ ...f, itemsJson: e.target.value }))} placeholder='Items JSON e.g. [{"medicine_id":1,"quantity":10,"unit_price":5}]' className="input-field h-24" />
-              </div>
-              <div>
-                <button type="submit" className="btn-primary">Create Order</button>
-              </div>
-            </form>
-          </div>
-        )}
+
 
         {/* Suppliers Table */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -285,20 +272,27 @@ export default function Suppliers() {
                       <td className="px-6 py-4 text-gray-600">{supplier.email || '-'}</td>
                       <td className="px-6 py-4 text-gray-600">{supplier.address || '-'}</td>
                       <td className="px-6 py-4 flex justify-center gap-3">
-                        <button
-                          onClick={() => handleEdit(supplier)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition"
-                          title="Edit supplier"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(supplier.supplier_id)}
-                          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition"
-                          title="Delete supplier"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {canManageSuppliers && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(supplier)}
+                              className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition"
+                              title="Edit supplier"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(supplier.supplier_id)}
+                              className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition"
+                              title="Delete supplier"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
+                        {!canManageSuppliers && (
+                          <span className="text-gray-500 text-sm">View only</span>
+                        )}
                       </td>
                     </tr>
                   ))}

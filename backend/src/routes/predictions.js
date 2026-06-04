@@ -52,7 +52,7 @@ router.get('/medicines/:disease', authenticateToken, async (req, res) => {
     const enrichedRecommendations = [];
     for (const rec of mlData.recommended_medicines || []) {
       const [medRows] = await pool.query(
-        'SELECT medicine_id, name, price, quantity FROM medicines WHERE name LIKE ? LIMIT 1',
+        'SELECT medicine_id, name, price, stock_quantity FROM medicines WHERE name LIKE ? LIMIT 1',
         [`%${rec.name}%`]
       );
 
@@ -60,7 +60,7 @@ router.get('/medicines/:disease', authenticateToken, async (req, res) => {
         ...rec,
         medicine_id: medRows && medRows.length > 0 ? medRows[0].medicine_id : null,
         db_price: medRows && medRows.length > 0 ? medRows[0].price : null,
-        current_stock: medRows && medRows.length > 0 ? medRows[0].quantity : null,
+        current_stock: medRows && medRows.length > 0 ? medRows[0].stock_quantity : null,
       });
     }
 

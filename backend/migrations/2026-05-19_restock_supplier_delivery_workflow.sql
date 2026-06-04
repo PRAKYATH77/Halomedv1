@@ -7,4 +7,7 @@ ALTER TABLE restock_requests
   ADD CONSTRAINT fk_restock_supplier FOREIGN KEY (supplier_id) REFERENCES users(user_id) ON DELETE SET NULL;
 
 -- Optional: index for quicker supplier/status queries
-CREATE INDEX idx_restock_supplier_status ON restock_requests (supplier_status);
+-- NOTE: creating an index here sometimes fails on environments where the
+-- column or index already exists. If you want the index, create it separately
+-- via a dedicated migration or run the following manually once:
+-- ALTER TABLE restock_requests ADD INDEX idx_restock_supplier_status (supplier_status);

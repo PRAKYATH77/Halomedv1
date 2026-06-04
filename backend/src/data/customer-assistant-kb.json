@@ -2,169 +2,623 @@
   {
     "id": "customer-dashboard",
     "title": "Browse medicines from the customer dashboard",
-    "tags": ["browse", "medicines", "dashboard", "filter", "cart"],
+    "tags": [
+      "browse",
+      "medicines",
+      "dashboard",
+      "filter",
+      "cart"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "Customers can browse medicines from the dashboard, filter by health condition, view stock status, and add in-stock medicines to the cart. The dashboard is the main place to discover medicines before checkout."
   },
   {
     "id": "customer-checkout",
     "title": "Checkout and payment flow",
-    "tags": ["checkout", "payment", "cod", "online", "order"],
+    "tags": [
+      "checkout",
+      "payment",
+      "cod",
+      "online",
+      "order"
+    ],
     "source": "backend/src/routes/customerOrders.js",
     "answer": "The checkout flow creates a customer order with delivery address, city, zip code, phone number, payment method, and transaction id. Cash on delivery starts as confirmed, while online payments start as pending until payment is completed."
   },
   {
     "id": "customer-order-status",
     "title": "Order status timeline",
-    "tags": ["order", "status", "pending", "confirmed", "assigned", "out_for_delivery", "received"],
+    "tags": [
+      "order",
+      "status",
+      "pending",
+      "confirmed",
+      "assigned",
+      "out_for_delivery",
+      "received"
+    ],
     "source": "backend/src/routes/customerOrders.js",
     "answer": "Customer orders move through the statuses pending, confirmed, assigned, out_for_delivery, and received. Customers can see their own orders and confirm receipt when an order is out for delivery or already delivered."
   },
   {
     "id": "delivery-store-flow",
     "title": "Delivery store workflow",
-    "tags": ["delivery", "delivery store", "assigned", "out for delivery", "received"],
+    "tags": [
+      "delivery",
+      "delivery store",
+      "assigned",
+      "out for delivery",
+      "received"
+    ],
     "source": "frontend/src/pages/Orders.jsx",
     "answer": "The delivery store role can see assigned orders and mark them out for delivery. After that, the customer can confirm receipt and the delivery status updates to received."
   },
   {
+    "id": "delivery-tracking-live-location",
+    "title": "Live delivery tracking (Swiggy-like)",
+    "tags": [
+      "tracking",
+      "live",
+      "location",
+      "map",
+      "out_for_delivery",
+      "assigned",
+      "delivery_store",
+      "customer"
+    ],
+    "source": "backend/src/routes/customerOrders.js",
+    "answer": "Live tracking starts only after the order is assigned to a delivery store and the delivery store clicks Start Delivery / Approve for Delivery (status becomes out_for_delivery). After that, the customer can open the Tracking page to see the courier marker updating about every 10 seconds until the order is marked received."
+  },
+  {
     "id": "prescriptions",
     "title": "Prescriptions and medical records",
-    "tags": ["prescriptions", "records", "customer"],
+    "tags": [
+      "prescriptions",
+      "records",
+      "customer"
+    ],
     "source": "frontend/src/App.jsx",
     "answer": "Customers have access to the Prescriptions page inside the app. Staff and admin also manage prescriptions, so it is the right place to review prescription-related information in the system."
   },
   {
     "id": "orders-page",
     "title": "Where to track orders",
-    "tags": ["orders", "track", "status", "delivery"],
+    "tags": [
+      "orders",
+      "track",
+      "status",
+      "delivery"
+    ],
     "source": "frontend/src/pages/Orders.jsx",
     "answer": "The Orders page shows the current order status, delivery assignment, and the timeline of each order. It is the best place to check whether an order is pending, confirmed, assigned, out for delivery, or received."
   },
   {
     "id": "profile",
     "title": "Profile and account access",
-    "tags": ["profile", "account", "login"],
+    "tags": [
+      "profile",
+      "account",
+      "login"
+    ],
     "source": "frontend/src/App.jsx",
     "answer": "The profile page is available after login so customers can review their account details inside the app. Role-based navigation keeps customers on customer-facing features only."
   },
   {
     "id": "customer-support-boundary",
     "title": "What the assistant should answer",
-    "tags": ["help", "support", "customer", "app"],
+    "tags": [
+      "help",
+      "support",
+      "customer",
+      "app"
+    ],
     "source": "backend/src/routes/customerAssistant.js",
     "answer": "This assistant is grounded in HALOmed app guidance. It should answer questions about browsing medicines, carts, checkout, orders, prescriptions, delivery tracking, and account usage, and clearly say when a question is outside the current knowledge base."
   },
   {
     "id": "symptom-guidance-overview",
     "title": "Symptom-to-medicine guidance",
-    "tags": ["symptom", "medicine", "duration", "fever", "cold", "cough", "pain", "digestion"],
+    "tags": [
+      "symptom",
+      "medicine",
+      "duration",
+      "fever",
+      "cold",
+      "cough",
+      "pain",
+      "digestion"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "HALOmed gives general symptom-to-medicine guidance: common medicine categories for symptom relief and typical short-term use."
   },
   {
     "id": "headache-guidance",
     "title": "Headache support",
-    "tags": ["headache", "migraine", "head pain"],
+    "tags": [
+      "headache",
+      "migraine",
+      "head pain"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "Paracetamol (acetaminophen) is the common first-line option for simple headaches; follow label dosing."
   },
   {
     "id": "runny-nose-guidance",
     "title": "Runny nose (rhinorrhea) support",
-    "tags": ["runny", "runny nose", "rhinorrhea", "allergy", "congestion"],
+    "tags": [
+      "runny",
+      "runny nose",
+      "rhinorrhea",
+      "allergy",
+      "congestion"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For a runny nose: try oral antihistamines (cetirizine, loratadine) for allergies, or saline and short-term decongestants for viral colds. Follow label directions."
   },
   {
     "id": "fever-pain-guidance",
     "title": "Fever and pain support",
-    "tags": ["fever", "pain", "headache", "bodyache", "temperature"],
+    "tags": [
+      "fever",
+      "pain",
+      "headache",
+      "bodyache",
+      "temperature"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For fever or body pain: paracetamol (acetaminophen) is the usual first-line option; ibuprofen is an alternative when suitable. Use label dosing."
   },
   {
+    "id": "fever-otc-safety",
+    "title": "Fever safety and when to seek care",
+    "tags": [
+      "fever",
+      "102",
+      "103",
+      "temperature",
+      "danger",
+      "urgent",
+      "red flags"
+    ],
+    "source": "backend/src/utils/customerAssistant.js",
+    "answer": "For fever, OTC options include paracetamol/acetaminophen (often first choice) or ibuprofen (if suitable). Follow label dosing, avoid combining multiple paracetamol-containing products, and seek urgent care for red flags (breathing difficulty, chest pain, confusion, stiff neck), very high fever, or fever lasting multiple days."
+  },
+  {
     "id": "sore-throat-guidance",
     "title": "Sore throat support",
-    "tags": ["sore throat", "throat", "pharyngitis"],
+    "tags": [
+      "sore throat",
+      "throat",
+      "pharyngitis"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For sore throat: lozenges, warm saline gargles, and paracetamol for pain relief are common options; follow product labels."
   },
   {
     "id": "cough-guidance",
     "title": "Cough support",
-    "tags": ["cough", "productive cough", "dry cough", "mucus"],
+    "tags": [
+      "cough",
+      "productive cough",
+      "dry cough",
+      "mucus"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For cough: use a suppressant like dextromethorphan for dry coughs, or an expectorant like guaifenesin for productive coughs; follow the label."
   },
   {
     "id": "diarrhea-guidance",
     "title": "Diarrhea support",
-    "tags": ["diarrhea", "loose stools", "stool"],
+    "tags": [
+      "diarrhea",
+      "loose stools",
+      "stool"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For mild diarrhoea: stay hydrated and use oral rehydration; loperamide can reduce frequency in adults for short-term relief—follow the label."
   },
   {
     "id": "congestion-guidance",
     "title": "Nasal congestion support",
-    "tags": ["congestion", "nasal congestion", "blocked nose", "stuffy"],
+    "tags": [
+      "congestion",
+      "nasal congestion",
+      "blocked nose",
+      "stuffy"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For nasal congestion: saline rinses, humidifiers, and short-term decongestant sprays can relieve blockage; follow product labels."
   },
   {
     "id": "allergy-guidance",
     "title": "Allergic rhinitis / allergy support",
-    "tags": ["allergy", "hay fever", "sneezing", "itchy"],
+    "tags": [
+      "allergy",
+      "hay fever",
+      "sneezing",
+      "itchy"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "For allergy symptoms: non-drowsy oral antihistamines (cetirizine, loratadine) commonly relieve sneezing and runny nose—follow the label."
   },
   {
     "id": "nausea-guidance",
     "title": "Nausea and vomiting support",
-    "tags": ["nausea", "vomit", "vomiting", "sick"],
+    "tags": [
+      "nausea",
+      "vomit",
+      "vomiting",
+      "sick"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
-    "answer": "For mild nausea: ginger, antacids, or OTC antiemetics may help; sip fluids slowly and follow product labels." 
+    "answer": "For mild nausea: ginger, antacids, or OTC antiemetics may help; sip fluids slowly and follow product labels."
   },
   {
     "id": "constipation-guidance",
     "title": "Constipation support",
-    "tags": ["constipation", "hard stools", "bowel movement"],
+    "tags": [
+      "constipation",
+      "hard stools",
+      "bowel movement"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
-    "answer": "For constipation: increase fiber and fluids and consider gentle laxatives (polyethylene glycol) for short-term relief; follow product labels." 
+    "answer": "For constipation: increase fiber and fluids and consider gentle laxatives (polyethylene glycol) for short-term relief; follow product labels."
   },
   {
     "id": "minor-wound-guidance",
     "title": "Minor cuts and wound care",
-    "tags": ["cut", "wound", "bleeding", "minor wound"],
+    "tags": [
+      "cut",
+      "wound",
+      "bleeding",
+      "minor wound"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
-    "answer": "For minor cuts: clean with water, apply antiseptic or ointment, and dress the wound; follow product labels." 
+    "answer": "For minor cuts: clean with water, apply antiseptic or ointment, and dress the wound; follow product labels."
   },
   {
     "id": "cold-cough-guidance",
     "title": "Cold and cough support",
-    "tags": ["cold", "cough", "sore throat", "runny nose", "congestion"],
+    "tags": [
+      "cold",
+      "cough",
+      "sore throat",
+      "runny nose",
+      "congestion"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
-    "answer": "Cold and cough medicines relieve symptoms: choose products that match your cough type or congestion and follow the label." 
+    "answer": "Cold and cough medicines relieve symptoms: choose products that match your cough type or congestion and follow the label."
   },
   {
     "id": "digestion-guidance",
     "title": "Digestion support",
-    "tags": ["digestion", "stomach", "acidity", "indigestion", "gas", "nausea"],
+    "tags": [
+      "digestion",
+      "stomach",
+      "acidity",
+      "indigestion",
+      "gas",
+      "nausea"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
-    "answer": "Digestion remedies depend on the symptom: antacids for acidity, anti-diarrhoeals for diarrhoea, and rehydration for fluid loss—follow labels." 
+    "answer": "Digestion remedies depend on the symptom: antacids for acidity, anti-diarrhoeals for diarrhoea, and rehydration for fluid loss—follow labels."
   },
   {
     "id": "antibiotics-guidance",
     "title": "Antibiotic safety note",
-    "tags": ["antibiotics", "infection", "bacterial", "antibiotic"],
+    "tags": [
+      "antibiotics",
+      "infection",
+      "bacterial",
+      "antibiotic"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "Antibiotics should only be used when prescribed for a suspected bacterial infection. The exact duration must follow the prescription, and the course should not be shortened or extended without clinical advice."
   },
   {
     "id": "skin-vitamins-guidance",
     "title": "Skin care and vitamins support",
-    "tags": ["skin", "vitamins", "supplement", "support"],
+    "tags": [
+      "skin",
+      "vitamins",
+      "supplement",
+      "support"
+    ],
     "source": "frontend/src/pages/Dashboard.jsx",
     "answer": "Skin care and vitamin questions usually map to the Skin Care or Vitamins categories. These products may support symptom management or general wellness, but exact benefit and duration vary by product and personal health needs."
+  },
+  {
+    "id": "faq-order-not-received",
+    "title": "My order shows out for delivery but I haven't received it",
+    "tags": [
+      "delivery",
+      "out for delivery",
+      "not received",
+      "received",
+      "order status",
+      "tracking"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Check the tracking link in your order details. If the status doesn't update in 30–60 minutes, contact Support with your order ID and current location."
+  },
+  {
+    "id": "faq-delivery-problem",
+    "title": "How to contact about delivery problems",
+    "tags": [
+      "delivery",
+      "problem",
+      "contact",
+      "support",
+      "help"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Use the in-app Help → Contact Support or email support@halomed.local with your order ID. Provide the order number, delivery address, and a short description."
+  },
+  {
+    "id": "faq-damaged-package",
+    "title": "Package arrived damaged - what to do",
+    "tags": [
+      "damaged",
+      "package",
+      "report",
+      "damage",
+      "support"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Take a clear photo of the package and items, then contact Support via the app with the photo and order ID. We'll start an investigation and guide you on next steps."
+  },
+  {
+    "id": "faq-payment-problems",
+    "title": "Help with payment problems and issues",
+    "tags": [
+      "payment",
+      "failed",
+      "double charge",
+      "transaction",
+      "support"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Contact Payments Support via Help or email payments@halomed.local with the transaction ID, order ID, and a screenshot of the payment receipt."
+  },
+  {
+    "id": "faq-refund-time",
+    "title": "How long do refunds take",
+    "tags": [
+      "refund",
+      "payment",
+      "time",
+      "processing"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Refunds are processed within 3–7 business days after approval. Bank processing times may vary and can add extra days."
+  },
+  {
+    "id": "faq-cancel-order-refund",
+    "title": "Cancelled order - will I get refunded",
+    "tags": [
+      "cancel",
+      "refund",
+      "order",
+      "payment"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "If the order was paid, a refund is initiated after cancellation. You'll receive confirmation by email and in the app when the refund is processed."
+  },
+  {
+    "id": "faq-change-cancel-order",
+    "title": "Can I change or cancel my order after placing it",
+    "tags": [
+      "cancel",
+      "change",
+      "modify",
+      "order"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Orders can usually be changed or cancelled within a short window before dispatch. Use the app Order page to request changes or contact Support with your order ID."
+  },
+  {
+    "id": "faq-medicine-returns",
+    "title": "How do returns work for medicines",
+    "tags": [
+      "return",
+      "medicine",
+      "refund",
+      "policy"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "For safety, many medicines are non-returnable unless incorrect or damaged. Returns policy is shown on the product page and order details — contact Support to confirm eligibility."
+  },
+  {
+    "id": "faq-prescription-upload",
+    "title": "How to upload or what if my prescription is rejected",
+    "tags": [
+      "prescription",
+      "upload",
+      "rejected",
+      "pharmacy",
+      "support"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Use the Prescriptions section in the app to upload documents. If a prescription is rejected, contact Pharmacy Support via Help with the prescription file and order ID."
+  },
+  {
+    "id": "faq-medicine-refill",
+    "title": "I need a refill for a recurring medicine",
+    "tags": [
+      "refill",
+      "prescription",
+      "recurring",
+      "medicine",
+      "repeat"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Open the product page or your prescriptions list and use the Refill option. If you'd like, Support can set up reminders or recurring orders for you."
+  },
+  {
+    "id": "faq-update-profile",
+    "title": "How to update profile or change password",
+    "tags": [
+      "profile",
+      "password",
+      "update",
+      "account",
+      "settings"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "You can update your personal details and change your password by navigating to the Profile section from the main menu. Make sure to save your changes."
+  },
+  {
+    "id": "faq-delivery-hours",
+    "title": "What are the delivery hours?",
+    "tags": [
+      "delivery",
+      "hours",
+      "time",
+      "schedule",
+      "open"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "Our delivery partners typically operate between 8:00 AM and 10:00 PM. Orders placed late at night may be assigned and delivered the following morning."
+  },
+  {
+    "id": "faq-payment-options",
+    "title": "What payment methods are supported?",
+    "tags": [
+      "payment",
+      "options",
+      "methods",
+      "upi",
+      "card",
+      "netbanking",
+      "cod"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "We support multiple payment methods including Credit/Debit Cards, UPI, Netbanking, and Cash on Delivery (COD). You can select your preferred method during checkout."
+  },
+  {
+    "id": "faq-promo-codes",
+    "title": "How to apply promo codes or discounts",
+    "tags": [
+      "promo",
+      "discount",
+      "code",
+      "offer",
+      "coupon"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "If you have a valid promo code or coupon, you can enter it on the Checkout page before finalizing your payment. The discount will be applied to your total instantly."
+  },
+  {
+    "id": "faq-contact-pharmacist",
+    "title": "How can I speak to a pharmacist?",
+    "tags": [
+      "pharmacist",
+      "consult",
+      "doctor",
+      "expert",
+      "advice"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "For professional medical advice or questions regarding your prescription, please use the 'Contact Pharmacist' option in the Help menu, or email pharmacy@halomed.local."
+  },
+  {
+    "id": "faq-medical-history",
+    "title": "Adding allergies or medical history",
+    "tags": [
+      "allergy",
+      "allergies",
+      "medical history",
+      "conditions"
+    ],
+    "source": "backend/src/data/CUSTOMER_ASSISTANT_FAQ.md",
+    "answer": "You can add any known drug allergies or pre-existing medical conditions in your Profile settings. This helps us ensure the medicines you order are safe for you."
+  },
+  {
+    "id": "faq-how-do-i-track-my-order",
+    "title": "How do I track my order?",
+    "tags": [
+      "track",
+      "order",
+      "delivery",
+      "status",
+      "tracking"
+    ],
+    "source": "frontend/src/pages/Orders.jsx",
+    "answer": "You can track your order by going to the Orders page in the app. Once your order is assigned to a delivery store and marked 'out for delivery', you can view live tracking and delivery status."
+  },
+  {
+    "id": "faq-how-does-checkout-work",
+    "title": "How does checkout work?",
+    "tags": [
+      "checkout",
+      "payment",
+      "work",
+      "process"
+    ],
+    "source": "frontend/src/pages/Checkout.jsx",
+    "answer": "During checkout, you will provide your delivery address and choose a payment method (like Cash on Delivery, Cards, or Netbanking). Once confirmed, your order is placed and will be assigned for delivery."
+  },
+  {
+    "id": "faq-how-do-i-confirm-an-order-was-received",
+    "title": "How do I confirm an order was received?",
+    "tags": [
+      "confirm",
+      "received",
+      "order",
+      "delivery"
+    ],
+    "source": "frontend/src/pages/Orders.jsx",
+    "answer": "You can confirm you have received your order by going to the Orders page. Once the delivery store marks the order as 'out for delivery', a 'Confirm Receipt' button will appear for you to acknowledge delivery."
+  },
+  {
+    "id": "faq-where-can-i-browse-medicines",
+    "title": "Where can I browse medicines?",
+    "tags": [
+      "browse",
+      "medicines",
+      "search",
+      "find",
+      "buy"
+    ],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "You can browse all available medicines on your customer Dashboard. You can also filter them by health condition or symptom to find exactly what you need."
+  },
+  {
+    "id": "faq-what-does-status-assigned-mean",
+    "title": "What does the status assigned mean?",
+    "tags": [
+      "status",
+      "assigned",
+      "meaning",
+      "order"
+    ],
+    "source": "frontend/src/pages/Orders.jsx",
+    "answer": "The 'assigned' status means your order has been accepted by a local delivery store and they are preparing it. The next status will be 'out for delivery' when it leaves the store."
+  },
+  {
+    "id": "faq-fever-headache-medicine-category",
+    "title": "I have fever and headache - what medicine category fits?",
+    "tags": [
+      "fever",
+      "headache",
+      "medicine",
+      "category",
+      "pain"
+    ],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "For fever and headache, you should look under the 'Fever & Pain' or 'Pain Relief' categories. Paracetamol (acetaminophen) is a common first-line option for both symptoms. Follow the label dosing."
+  },
+  {
+    "id": "faq-medicine-cough-how-long",
+    "title": "Can this medicine help my cough and for how long should I take it?",
+    "tags": [
+      "cough",
+      "medicine",
+      "duration",
+      "how long",
+      "take"
+    ],
+    "source": "frontend/src/pages/Dashboard.jsx",
+    "answer": "Cough medicines (like dextromethorphan for dry coughs or guaifenesin for productive coughs) can relieve symptoms. You should follow the exact duration specified on the product label. If symptoms persist for more than a week, seek medical care."
   }
 ]

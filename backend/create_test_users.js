@@ -18,13 +18,18 @@ async function createTestUsers() {
     const deliveryStorePass = await bcrypt.hash('delivery123', 10);
     const supplierPass = await bcrypt.hash('supplier123', 10);
 
-    // Insert test users
+    // Insert (or update) test users so passwords stay in sync across reruns
     await connection.query(
-      `INSERT IGNORE INTO users (username, password_hash, email, role, is_active) VALUES 
-       (?, ?, ?, ?, TRUE), 
-       (?, ?, ?, ?, TRUE),
-       (?, ?, ?, ?, TRUE),
-       (?, ?, ?, ?, TRUE)`,
+      `INSERT INTO users (username, password_hash, email, role, is_active) VALUES
+        (?, ?, ?, ?, TRUE),
+        (?, ?, ?, ?, TRUE),
+        (?, ?, ?, ?, TRUE),
+        (?, ?, ?, ?, TRUE)
+       ON DUPLICATE KEY UPDATE
+        password_hash = VALUES(password_hash),
+        email = VALUES(email),
+        role = VALUES(role),
+        is_active = VALUES(is_active)`,
       [
         'staff', staffPass, 'staff@halomed.com', 'staff',
         'customer', customerPass, 'customer@halomed.com', 'customer',

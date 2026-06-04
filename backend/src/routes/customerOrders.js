@@ -646,11 +646,11 @@ router.get('/payments/list', authenticateToken, authorizeRole(['admin', 'staff']
     const pool = req.app.locals.pool;
     const { status } = req.query;
 
-    let query = `SELECT pt.*, co.delivery_address, co.city, co.phone_number, u.username 
-                 FROM payment_transactions pt 
-                 LEFT JOIN customer_orders co ON pt.order_id = co.order_id 
-                 LEFT JOIN users u ON pt.customer_id = u.user_id
-                 WHERE 1=1`;
+    let query = `SELECT pt.*, s.customer_id AS sale_customer_id, c.name AS customer_name
+           FROM payment_transactions pt
+           LEFT JOIN sales s ON pt.sale_id = s.sale_id
+           LEFT JOIN customers c ON s.customer_id = c.customer_id
+           WHERE 1=1`;
     const params = [];
 
     if (status) {

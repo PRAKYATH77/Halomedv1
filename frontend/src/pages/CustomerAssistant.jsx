@@ -103,7 +103,6 @@ function CustomerAssistant() {
               <h1 className="text-4xl font-bold">HALOmed Assistant</h1>
               <p className="mt-3 text-white/80 text-base leading-7">
                 Ask questions about medicines, cart, checkout, orders, prescriptions, and delivery tracking.
-                Every answer comes with a confidence label so you can judge how closely it matches HALOmed guidance.
               </p>
             </div>
           </div>

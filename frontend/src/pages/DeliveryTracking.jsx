@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { MapPinned, Navigation, ArrowLeft, Truck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { customerOrdersAPI } from '../services/api';
+import TrackingMap from '../components/TrackingMap';
 
 const DELIVERY_HUB = {
   lat: 12.9716,
@@ -86,6 +87,7 @@ const getTrackingSnapshot = (order) => {
   };
 };
 
+// eslint-disable-next-line no-unused-vars
 const renderTrackingMap = (order, overrideSnapshot = null) => {
   const snapshot = overrideSnapshot || getTrackingSnapshot(order);
 
@@ -292,6 +294,8 @@ export default function DeliveryTracking() {
   }
 
   const allowReceive = isCustomer && order.status === 'out_for_delivery';
+  const effectiveSnapshot = serverSnapshot || getTrackingSnapshot(order);
+  const trackingUnlockedForCustomer = !isCustomer || ['out_for_delivery', 'received'].includes(order.status);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -312,7 +316,17 @@ export default function DeliveryTracking() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.9fr] gap-6">
           <div>
-            {renderTrackingMap(order, serverSnapshot)}
+            {trackingUnlockedForCustomer ? (
+              <TrackingMap snapshot={effectiveSnapshot} />
+            ) : (
+              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg p-8">
+                <h2 className="text-xl font-bold text-gray-900">Tracking not started yet</h2>
+                <p className="text-gray-600 mt-2">
+                  You’ll see the delivery partner’s live location here after the delivery store clicks
+                  <span className="font-semibold"> Start Delivery</span>.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -326,9 +340,8 @@ export default function DeliveryTracking() {
             <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
               <p className="text-sm font-semibold text-gray-500 uppercase tracking-[0.2em]">Live ETA</p>
               <p className="text-4xl font-black text-blue-700 mt-2">
-                {order.status === 'received' ? 'Delivered' : 'Few minutes'}
+                {order.status === 'received' ? 'Delivered' : `${effectiveSnapshot?.etaMinutes ?? '—'} min`}
               </p>
-              <p className="text-gray-600 mt-2">The tracking view updates every 10 seconds to simulate movement.</p>
             </div>
 
             {allowReceive && (

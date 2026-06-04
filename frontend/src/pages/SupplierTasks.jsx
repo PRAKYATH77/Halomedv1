@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { restockRequestsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ClipboardList, Package, Truck, CheckCircle2, Clock3 } from 'lucide-react';
+import TrackingMap from '../components/TrackingMap';
+import { buildRestockTrackingSnapshot } from '../utils/restockTracking';
 
 function SupplierTasks() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [actionId, setActionId] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   const counts = useMemo(() => {
     const assigned = requests.filter((request) => request.supplier_status === 'assigned' || !request.supplier_status).length;
@@ -25,12 +28,16 @@ function SupplierTasks() {
     try {
       const response = await restockRequestsAPI.getSupplierMine();
       setRequests(response.data || []);
+      setSelectedRequestId((current) => current || response.data?.[0]?.request_id || null);
     } catch (error) {
       console.error('Failed to load supplier requests:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const selectedRequest = requests.find((request) => request.request_id === selectedRequestId) || requests[0] || null;
+  const trackingSnapshot = buildRestockTrackingSnapshot(selectedRequest);
 
   const updateStatus = async (requestId, type) => {
     setActionId(requestId);
@@ -93,6 +100,31 @@ function SupplierTasks() {
           <p className="text-3xl font-bold text-primary mt-2">{counts.delivered}</p>
         </div>
       </div>
+
+      {trackingSnapshot && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Supplier Route Monitor</h2>
+              <p className="text-sm text-gray-600">Road route from supplier to delivery store.</p>
+            </div>
+            {requests.length > 1 && (
+              <select
+                className="input-field max-w-xs"
+                value={selectedRequestId || ''}
+                onChange={(event) => setSelectedRequestId(Number(event.target.value))}
+              >
+                {requests.map((request) => (
+                  <option key={request.request_id} value={request.request_id}>
+                    #{request.request_id} - {request.medicine_name || `Medicine #${request.medicine_id}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <TrackingMap snapshot={trackingSnapshot} height={380} />
+        </div>
+      )}
 
       <div className="card">
         <div className="flex items-center gap-2 mb-4">

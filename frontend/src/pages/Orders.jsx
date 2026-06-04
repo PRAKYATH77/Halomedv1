@@ -86,6 +86,7 @@ const getTrackingSnapshot = (order) => {
   };
 };
 
+// eslint-disable-next-line no-unused-vars
 const renderTrackingMap = (order) => {
   const snapshot = getTrackingSnapshot(order);
 
@@ -216,6 +217,11 @@ export default function Orders() {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingStatus, setEditingStatus] = useState('');
   const [assignmentDrafts, setAssignmentDrafts] = useState({});
+  const [paymentOrder, setPaymentOrder] = useState(null);
+  const [paymentOtp, setPaymentOtp] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentChallengeCode, setPaymentChallengeCode] = useState('');
   const isCustomer = user?.role === 'customer';
   const isDeliveryStore = user?.role === 'delivery_store';
   const canManageOrders = ['admin', 'staff'].includes(user?.role);
@@ -343,41 +349,50 @@ export default function Orders() {
     }
   };
   const handleSimulatedPayment = async (order) => {
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    setPaymentOrder(order);
+    setPaymentOtp('');
+    setPaymentError('');
+    setPaymentChallengeCode(generatedOtp);
+  };
+
+  const closePaymentModal = () => {
+    if (paymentProcessing) {
+      return;
+    }
+
+    setPaymentOrder(null);
+    setPaymentOtp('');
+    setPaymentError('');
+    setPaymentChallengeCode('');
+  };
+
+  const submitPayment = async () => {
+    if (!paymentOrder) {
+      return;
+    }
+
+    if (paymentOtp.trim() !== paymentChallengeCode) {
+      setPaymentError('Incorrect OTP. Payment not processed.');
+      return;
+    }
+
     try {
-      // Simple demo OTP flow for online payments
-      const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-      const userOtp = window.prompt(
-        `Demo OTP verification\n\nYour OTP is: ${generatedOtp}\nPlease enter this 4-digit OTP to confirm payment.`
-      );
-
-      if (!userOtp) {
-        return; // User cancelled
-      }
-
-      if (userOtp.trim() !== generatedOtp) {
-        alert('Incorrect OTP. Payment not processed.');
-        return;
-      }
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/orders/${order.order_id}/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ transactionId: `SIMULATED_${Date.now()}` }),
+      setPaymentProcessing(true);
+      setPaymentError('');
+      await customerOrdersAPI.pay(paymentOrder.order_id, {
+        transactionId: `SIMULATED_${Date.now()}`,
       });
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to process payment');
-      }
-
+      setPaymentOrder(null);
+      setPaymentOtp('');
+      setPaymentChallengeCode('');
       await fetchOrders();
     } catch (error) {
       console.error('Error processing simulated payment:', error);
       alert(error.message || 'Failed to process payment');
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 
@@ -663,6 +678,8 @@ export default function Orders() {
                               <div
                                 className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${getStepClass(state)}`}
                               >
+
+                          {['out_for_delivery', 'received'].includes(order.status) && renderTrackingMap(order)}
                                 {index + 1}
                               </div>
                               <p className="text-xs mt-2 text-gray-700">{getStepLabel(step)}</p>
@@ -749,19 +766,30 @@ export default function Orders() {
                       onClick={() => handleApproveDelivery(order.order_id)}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
                     >
-                      Approve for Delivery
+                      Start Delivery (Share live location)
                     </button>
                   </div>
                 )}
 
                 {isCustomer && order.status === 'out_for_delivery' && (
                   <div className="mt-6 pt-6 border-t flex gap-3">
-                    <button
-                      onClick={() => handleStatusUpdate(order.order_id, 'received')}
-                      className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
-                    >
-                      Mark as Received
-                    </button>
+                    {(() => {
+                      const snapshot = getTrackingSnapshot(order);
+                      const isArrived = snapshot && snapshot.progress >= 100;
+                      return (
+                        <button
+                          onClick={() => handleStatusUpdate(order.order_id, 'received')}
+                          disabled={!isArrived}
+                          className={`${
+                            isArrived 
+                              ? 'bg-green-600 hover:bg-green-700' 
+                              : 'bg-gray-400 cursor-not-allowed'
+                          } text-white font-semibold py-2 px-6 rounded-lg transition flex-1`}
+                        >
+                          {isArrived ? 'Mark as Received' : 'Waiting for Courier to Arrive...'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -772,7 +800,7 @@ export default function Orders() {
                       onClick={() => handleStatusUpdate(order.order_id, 'confirmed')}
                       className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
                     >
-                      Proceed to Payment
+                      Confirm Order
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(order.order_id, 'cancelled')}
@@ -790,7 +818,7 @@ export default function Orders() {
                       onClick={() => handleSimulatedPayment(order)}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition flex-1"
                     >
-                      Pay Now (Demo)
+                      Pay Now
                     </button>
                   </div>
                 )}
@@ -799,6 +827,63 @@ export default function Orders() {
           ))}
         </div>
       </div>
+
+      {paymentOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
+              <p className="text-sm uppercase tracking-[0.22em] text-white/80">Demo payment</p>
+              <h2 className="text-2xl font-bold mt-1">Confirm order #{paymentOrder.order_id}</h2>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">OTP for demo verification</p>
+                <p className="text-3xl font-black text-slate-900 mt-2">{paymentChallengeCode}</p>
+                <p className="text-sm text-slate-500 mt-2">Enter the code above to complete the simulated payment.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="payment-otp">
+                  Enter OTP
+                </label>
+                <input
+                  id="payment-otp"
+                  value={paymentOtp}
+                  onChange={(e) => setPaymentOtp(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={4}
+                  autoComplete="one-time-code"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-lg tracking-[0.4em] text-center font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="0000"
+                />
+              </div>
+
+              {paymentError && (
+                <p className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-semibold text-red-700">
+                  {paymentError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={closePaymentModal}
+                  disabled={paymentProcessing}
+                  className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitPayment}
+                  disabled={paymentProcessing}
+                  className="flex-1 rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {paymentProcessing ? 'Processing...' : 'Confirm Payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

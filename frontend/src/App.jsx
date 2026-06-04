@@ -15,6 +15,7 @@ import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Orders from './pages/Orders';
 import DeliveryTracking from './pages/DeliveryTracking';
+import AdminTracking from './pages/AdminTracking';
 import Payments from './pages/Payments';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -53,6 +54,7 @@ function App() {
                     <Route path="/users" element={<Users />} />
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/tracking/:orderId" element={<DeliveryTracking />} />
+                    <Route path="/admin/tracking" element={<AdminTracking />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout" element={<Checkout />} />
